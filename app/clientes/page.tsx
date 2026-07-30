@@ -1,172 +1,170 @@
 import Link from "next/link";
 import Sidebar from "../components/layout/Sidebar";
+import Badge from "../components/ui/Badge";
+import Button from "../components/ui/Button";
+import Card from "../components/ui/Card";
+import EmptyState from "../components/ui/EmptyState";
+import PageHeader from "../components/ui/PageHeader";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "../components/ui/Table";
 import { prisma } from "../lib/prisma";
 
-function formatarMoeda(valor: unknown) {
-  const numero = Number(valor);
-
-  return new Intl.NumberFormat("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-  }).format(Number.isFinite(numero) ? numero : 0);
+function formatarData(data: Date) {
+  return new Intl.DateTimeFormat("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(data);
 }
 
-function formatarSituacao(situacao: string) {
-  switch (situacao) {
-    case "ATIVO":
-      return {
-        texto: "Ativo",
-        classe: "bg-green-100 text-green-700",
-      };
-
-    case "INATIVO":
-      return {
-        texto: "Inativo",
-        classe: "bg-red-100 text-red-700",
-      };
-
-    case "AFASTADO":
-      return {
-        texto: "Afastado",
-        classe: "bg-amber-100 text-amber-700",
-      };
-
-    default:
-      return {
-        texto: situacao,
-        classe: "bg-slate-100 text-slate-700",
-      };
-  }
-}
-
-export default async function VendedoresPage() {
-  const vendedores = await prisma.vendedor.findMany({
+export default async function ClientesPage() {
+  const clientes = await prisma.cliente.findMany({
     orderBy: {
       id: "desc",
     },
   });
 
-  const totalVendedores = vendedores.length;
-  const totalAtivos = vendedores.filter(
-    (vendedor) => vendedor.situacao === "ATIVO"
+  const totalClientes = clientes.length;
+  const clientesComEmail = clientes.filter(
+    (cliente) => cliente.email
   ).length;
 
   return (
     <div className="flex">
       <Sidebar />
 
-      <main className="min-h-screen flex-1 bg-slate-100 p-10">
-        <div className="mb-8 flex items-center justify-between">
-          <div>
-            <h1 className="text-5xl font-bold">Vendedores</h1>
+      <main className="min-h-screen flex-1 space-y-6 bg-slate-100 p-10">
+        <PageHeader
+          title="Clientes"
+          subtitle="Gerencie os clientes cadastrados no D&M OS."
+          action={
+            <Link
+              href="/clientes/novo"
+              className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-5 py-3 font-medium text-white transition hover:bg-blue-700"
+            >
+              + Novo Cliente
+            </Link>
+          }
+        />
 
-            <p className="mt-2 text-gray-500">
-              Total cadastrados: <strong>{totalVendedores}</strong>
-              {" | "}
-              Ativos: <strong>{totalAtivos}</strong>
+        <div className="grid gap-4 md:grid-cols-2">
+          <Card>
+            <p className="text-sm font-medium text-slate-500">
+              Total de clientes
             </p>
-          </div>
 
-          <Link
-            href="/vendedores/novo"
-            className="rounded-lg bg-blue-600 px-5 py-3 text-white hover:bg-blue-700"
-          >
-            + Novo Vendedor
-          </Link>
+            <div className="mt-3 flex items-center justify-between">
+              <strong className="text-3xl text-slate-900">
+                {totalClientes}
+              </strong>
+
+              <Badge variant="info">Cadastrados</Badge>
+            </div>
+          </Card>
+
+          <Card>
+            <p className="text-sm font-medium text-slate-500">
+              Clientes com e-mail
+            </p>
+
+            <div className="mt-3 flex items-center justify-between">
+              <strong className="text-3xl text-slate-900">
+                {clientesComEmail}
+              </strong>
+
+              <Badge variant="success">Completos</Badge>
+            </div>
+          </Card>
         </div>
 
-        <div className="mb-6">
-          <input
-            type="text"
-            placeholder="Pesquisar vendedor..."
-            className="w-full rounded-lg border border-gray-300 px-4 py-3 outline-none focus:border-blue-500"
-          />
-        </div>
+        <Card>
+          {clientes.length === 0 ? (
+            <EmptyState
+              title="Nenhum cliente cadastrado"
+              description="Cadastre o primeiro cliente para começar a utilizar este módulo."
+              icon={
+                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-slate-200 text-2xl">
+                  👤
+                </div>
+              }
+              action={
+                <Link
+                  href="/clientes/novo"
+                  className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-5 py-3 font-medium text-white transition hover:bg-blue-700"
+                >
+                  Novo cliente
+                </Link>
+              }
+            />
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nome</TableHead>
+                  <TableHead>CPF</TableHead>
+                  <TableHead>Telefone</TableHead>
+                  <TableHead>E-mail</TableHead>
+                  <TableHead>Cadastro</TableHead>
+                  <TableHead className="text-right">
+                    Ações
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
 
-        <div className="overflow-x-auto rounded-xl bg-white p-6 shadow-md">
-          <table className="w-full min-w-[1100px]">
-            <thead>
-              <tr className="border-b">
-                <th className="py-3 text-left">Nome</th>
-                <th className="py-3 text-left">CPF</th>
-                <th className="py-3 text-left">Telefone</th>
-                <th className="py-3 text-left">Cargo</th>
-                <th className="py-3 text-left">Situação</th>
-                <th className="py-3 text-left">Meta mensal</th>
-                <th className="py-3 text-left">
-                  Meta de contratos
-                </th>
-                <th className="py-3 text-center">Ações</th>
-              </tr>
-            </thead>
+              <TableBody>
+                {clientes.map((cliente) => (
+                  <TableRow key={cliente.id}>
+                    <TableCell className="font-medium">
+                      {cliente.nome}
+                    </TableCell>
 
-            <tbody>
-              {vendedores.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={8}
-                    className="py-10 text-center text-gray-500"
-                  >
-                    Nenhum vendedor cadastrado.
-                  </td>
-                </tr>
-              ) : (
-                vendedores.map((vendedor) => {
-                  const situacao = formatarSituacao(
-                    vendedor.situacao
-                  );
+                    <TableCell>{cliente.cpf}</TableCell>
 
-                  return (
-                    <tr
-                      key={vendedor.id}
-                      className="border-b hover:bg-slate-50"
-                    >
-                      <td className="py-3 font-medium">
-                        {vendedor.nome}
-                      </td>
+                    <TableCell>{cliente.telefone}</TableCell>
 
-                      <td>{vendedor.cpf}</td>
-
-                      <td>{vendedor.telefone}</td>
-
-                      <td>{vendedor.cargo}</td>
-
-                      <td>
-                        <span
-                          className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${situacao.classe}`}
-                        >
-                          {situacao.texto}
+                    <TableCell>
+                      {cliente.email || (
+                        <span className="text-slate-400">
+                          Não informado
                         </span>
-                      </td>
+                      )}
+                    </TableCell>
 
-                      <td>{formatarMoeda(vendedor.metaMensal)}</td>
+                    <TableCell>
+                      {formatarData(cliente.criadoEm)}
+                    </TableCell>
 
-                      <td>{vendedor.metaContratos}</td>
-
-                      <td className="space-x-2 text-center">
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
                         <Link
-                          href={`/vendedores/${vendedor.id}/editar`}
-                          className="rounded bg-amber-500 px-3 py-1 text-white hover:bg-amber-600"
+                          href={`/clientes/${cliente.id}`}
+                          className="inline-flex items-center justify-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
                         >
-                          Editar
+                          Visualizar
                         </Link>
 
-                        <button
+                        <Button
                           type="button"
+                          variant="danger"
                           disabled
-                          title="A exclusão será implementada na próxima etapa"
-                          className="cursor-not-allowed rounded bg-red-400 px-3 py-1 text-white opacity-60"
+                          title="A exclusão será implementada posteriormente"
                         >
                           Excluir
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </Card>
       </main>
     </div>
   );

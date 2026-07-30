@@ -10,32 +10,107 @@ datasource db {
   provider = "sqlite"
 }
 
+enum StatusLead {
+  NOVO
+  PRIMEIRO_CONTATO
+  DOCUMENTACAO
+  DIGITACAO
+  EM_ANALISE
+  APROVADO
+  PAGO
+  PERDIDO
+}
+
 model Cliente {
-  id        Int      @id @default(autoincrement())
-  nome      String
-  cpf       String   @unique
-  telefone  String
-  email     String?
-  criadoEm  DateTime @default(now())
+  id       Int      @id @default(autoincrement())
+  nome     String
+  cpf      String   @unique
+  telefone String
+  email    String?
+  criadoEm DateTime @default(now())
 }
 
 model Vendedor {
-  id               Int      @id @default(autoincrement())
-  nome             String
-  cpf              String   @unique
-  rg               String?
-  dataNascimento   DateTime?
-  telefone         String
-  whatsapp         String?
-  email            String?
-  matricula        String?  @unique
-  cargo            String   @default("Vendedor")
-  dataAdmissao     DateTime?
-  situacao         String   @default("ATIVO")
-  metaMensal       Decimal  @default(0)
-  metaContratos    Int      @default(0)
-  comissaoPadrao   Decimal  @default(0)
-  observacoes      String?
-  criadoEm         DateTime @default(now())
-  atualizadoEm     DateTime @updatedAt
+  id             Int       @id @default(autoincrement())
+  nome           String
+  cpf            String    @unique
+  rg             String?
+  dataNascimento DateTime?
+  telefone       String
+  whatsapp       String?
+  email          String?
+  matricula      String?   @unique
+  cargo          String    @default("Vendedor")
+  dataAdmissao   DateTime?
+  situacao       String    @default("ATIVO")
+  metaMensal     Decimal   @default(0)
+  metaContratos  Int       @default(0)
+  comissaoPadrao Decimal   @default(0)
+  observacoes    String?
+  criadoEm       DateTime  @default(now())
+  atualizadoEm   DateTime  @updatedAt
+
+  leads Lead[]
+}
+
+model Banco {
+  id     Int     @id @default(autoincrement())
+  nome   String  @unique
+  codigo String?
+  ativo  Boolean @default(true)
+
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  leads Lead[]
+}
+
+model Convenio {
+  id     Int     @id @default(autoincrement())
+  nome   String  @unique
+  codigo String?
+  ativo  Boolean @default(true)
+
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  leads Lead[]
+}
+
+model Lead {
+  id Int @id @default(autoincrement())
+
+  nome     String
+  cpf      String?
+  telefone String
+  whatsapp String?
+  email    String?
+
+  origem String     @default("WhatsApp")
+  status StatusLead @default(NOVO)
+
+  // Campo antigo mantido temporariamente para preservar dados existentes.
+  convenio String?
+
+  convenioId       Int?
+  convenioCadastro Convenio? @relation(fields: [convenioId], references: [id])
+
+  // Campo antigo mantido temporariamente para preservar dados existentes.
+  banco String?
+
+  bancoId       Int?
+  bancoCadastro Banco? @relation(fields: [bancoId], references: [id])
+
+  produto String?
+
+  valorSolicitado Decimal? @default(0)
+  valorLiberado   Decimal? @default(0)
+
+  observacoes String?
+
+  vendedorId Int?
+  vendedor   Vendedor? @relation(fields: [vendedorId], references: [id])
+
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
 }

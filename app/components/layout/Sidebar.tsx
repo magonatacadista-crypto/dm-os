@@ -29,10 +29,15 @@ const secoes = [
         href: "/agenda",
         icone: "📅",
       },
+      {
+        nome: "Pipeline",
+        href: "/pipeline",
+        icone: "📊",
+      },
     ],
   },
   {
-    titulo: "Cadastros",
+    titulo: "Equipe",
     itens: [
       {
         nome: "Vendedores",
@@ -43,26 +48,6 @@ const secoes = [
         nome: "Supervisores",
         href: "/supervisores",
         icone: "🧑‍💼",
-      },
-      {
-        nome: "Bancos",
-        href: "/bancos",
-        icone: "🏦",
-      },
-      {
-        nome: "Convênios",
-        href: "/convenios",
-        icone: "📋",
-      },
-      {
-        nome: "Produtos",
-        href: "/produtos",
-        icone: "💳",
-      },
-      {
-        nome: "Parceiros",
-        href: "/parceiros",
-        icone: "🤝",
       },
     ],
   },
@@ -83,6 +68,11 @@ const secoes = [
         nome: "Documentos",
         href: "/documentos",
         icone: "📁",
+      },
+      {
+        nome: "Parceiros",
+        href: "/parceiros",
+        icone: "🤝",
       },
     ],
   },
@@ -114,11 +104,6 @@ const secoes = [
   {
     titulo: "Administração",
     itens: [
-      {
-        nome: "Usuários",
-        href: "/usuarios",
-        icone: "🔐",
-      },
       {
         nome: "Configurações",
         href: "/configuracoes",
@@ -154,7 +139,7 @@ export default function Sidebar() {
                       href={item.href}
                       className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-slate-200 transition hover:bg-slate-800 hover:text-blue-400"
                     >
-                      <span>{item.icone}</span>
+                      <span aria-hidden="true">{item.icone}</span>
                       <span>{item.nome}</span>
                     </Link>
                   </li>
