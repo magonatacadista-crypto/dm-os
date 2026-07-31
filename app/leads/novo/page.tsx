@@ -10,7 +10,7 @@ import { prisma } from "../../lib/prisma";
 import { criarLead } from "../actions";
 
 export default async function NovoLeadPage() {
-  const [bancos, convenios] = await Promise.all([
+  const [bancos, convenios, vendedores] = await Promise.all([
     prisma.banco.findMany({
       where: {
         ativo: true,
@@ -36,6 +36,20 @@ export default async function NovoLeadPage() {
         id: true,
         nome: true,
         codigo: true,
+      },
+    }),
+
+    prisma.vendedor.findMany({
+      where: {
+        situacao: "ATIVO",
+      },
+      orderBy: {
+        nome: "asc",
+      },
+      select: {
+        id: true,
+        nome: true,
+        matricula: true,
       },
     }),
   ]);
@@ -167,6 +181,43 @@ export default async function NovoLeadPage() {
                 )}
               </div>
 
+              <div className="w-full">
+                <label
+                  htmlFor="vendedorId"
+                  className="mb-2 block text-sm font-medium text-slate-700"
+                >
+                  Vendedor responsável
+                </label>
+
+                <select
+                  id="vendedorId"
+                  name="vendedorId"
+                  defaultValue=""
+                  className="w-full rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                >
+                  <option value="">
+                    Selecione um vendedor
+                  </option>
+
+                  {vendedores.map((vendedor) => (
+                    <option
+                      key={vendedor.id}
+                      value={vendedor.id}
+                    >
+                      {vendedor.matricula
+                        ? `${vendedor.nome} — ${vendedor.matricula}`
+                        : vendedor.nome}
+                    </option>
+                  ))}
+                </select>
+
+                {vendedores.length === 0 && (
+                  <p className="mt-1.5 text-sm text-amber-600">
+                    Nenhum vendedor ativo cadastrado.
+                  </p>
+                )}
+              </div>
+
               <Input
                 label="Produto"
                 name="produto"
@@ -186,6 +237,17 @@ export default async function NovoLeadPage() {
                 placeholder="0,00"
                 inputMode="decimal"
               />
+              <Input
+  label="Próximo contato"
+  name="proximoContato"
+  type="datetime-local"
+/>
+
+<Input
+  label="Último contato"
+  name="ultimoContato"
+  type="datetime-local"
+/>
             </div>
 
             <div className="mt-8">

@@ -1,4 +1,5 @@
 import Link from "next/link";
+
 import Sidebar from "../components/layout/Sidebar";
 import Badge from "../components/ui/Badge";
 import Card from "../components/ui/Card";
@@ -12,6 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from "../components/ui/Table";
+
 import { prisma } from "../lib/prisma";
 
 function formatarMoeda(valor: unknown) {
@@ -39,9 +41,9 @@ function obterStatus(status: string) {
         variante: "info" as const,
       };
 
-    case "EM_CONTATO":
+    case "PRIMEIRO_CONTATO":
       return {
-        texto: "Em contato",
+        texto: "Primeiro contato",
         variante: "warning" as const,
       };
 
@@ -49,6 +51,12 @@ function obterStatus(status: string) {
       return {
         texto: "Documentação",
         variante: "warning" as const,
+      };
+
+    case "DIGITACAO":
+      return {
+        texto: "Digitação",
+        variante: "info" as const,
       };
 
     case "EM_ANALISE":
@@ -69,9 +77,9 @@ function obterStatus(status: string) {
         variante: "success" as const,
       };
 
-    case "RECUSADO":
+    case "PERDIDO":
       return {
-        texto: "Recusado",
+        texto: "Perdido",
         variante: "danger" as const,
       };
 
@@ -94,32 +102,42 @@ export default async function LeadsPage() {
           nome: true,
         },
       },
+      bancoCadastro: {
+        select: {
+          nome: true,
+        },
+      },
+      convenioCadastro: {
+        select: {
+          nome: true,
+        },
+      },
     },
   });
 
   const totalLeads = leads.length;
 
   const leadsNovos = leads.filter(
-    (lead) => lead.status === "NOVO"
+    (lead) => lead.status === "NOVO",
   ).length;
 
   const leadsAprovados = leads.filter(
     (lead) =>
       lead.status === "APROVADO" ||
-      lead.status === "PAGO"
+      lead.status === "PAGO",
   ).length;
 
   const valorSolicitadoTotal = leads.reduce(
     (total, lead) =>
       total + Number(lead.valorSolicitado ?? 0),
-    0
+    0,
   );
 
   return (
     <div className="flex">
       <Sidebar />
 
-      <main className="min-h-screen flex-1 space-y-6 bg-slate-100 p-10">
+      <main className="min-h-screen min-w-0 flex-1 space-y-6 bg-slate-100 p-6 lg:p-10">
         <PageHeader
           title="Leads"
           subtitle="Acompanhe as oportunidades comerciais da operação."
@@ -144,7 +162,9 @@ export default async function LeadsPage() {
                 {totalLeads}
               </strong>
 
-              <Badge variant="info">Oportunidades</Badge>
+              <Badge variant="info">
+                Oportunidades
+              </Badge>
             </div>
           </Card>
 
@@ -158,7 +178,9 @@ export default async function LeadsPage() {
                 {leadsNovos}
               </strong>
 
-              <Badge variant="warning">Aguardando</Badge>
+              <Badge variant="warning">
+                Aguardando
+              </Badge>
             </div>
           </Card>
 
@@ -172,7 +194,9 @@ export default async function LeadsPage() {
                 {leadsAprovados}
               </strong>
 
-              <Badge variant="success">Convertidos</Badge>
+              <Badge variant="success">
+                Convertidos
+              </Badge>
             </div>
           </Card>
 
@@ -216,7 +240,8 @@ export default async function LeadsPage() {
                 <TableRow>
                   <TableHead>Nome</TableHead>
                   <TableHead>Telefone</TableHead>
-                  <TableHead>Origem</TableHead>
+                  <TableHead>Banco</TableHead>
+                  <TableHead>Convênio</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Vendedor</TableHead>
                   <TableHead>Valor solicitado</TableHead>
@@ -231,15 +256,41 @@ export default async function LeadsPage() {
                 {leads.map((lead) => {
                   const status = obterStatus(lead.status);
 
+                  const nomeBanco =
+                    lead.bancoCadastro?.nome ??
+                    lead.banco ??
+                    null;
+
+                  const nomeConvenio =
+                    lead.convenioCadastro?.nome ??
+                    lead.convenio ??
+                    null;
+
                   return (
                     <TableRow key={lead.id}>
                       <TableCell className="font-medium">
                         {lead.nome}
                       </TableCell>
 
-                      <TableCell>{lead.telefone}</TableCell>
+                      <TableCell>
+                        {lead.telefone}
+                      </TableCell>
 
-                      <TableCell>{lead.origem}</TableCell>
+                      <TableCell>
+                        {nomeBanco ?? (
+                          <span className="text-slate-400">
+                            Não informado
+                          </span>
+                        )}
+                      </TableCell>
+
+                      <TableCell>
+                        {nomeConvenio ?? (
+                          <span className="text-slate-400">
+                            Não informado
+                          </span>
+                        )}
+                      </TableCell>
 
                       <TableCell>
                         <Badge variant={status.variante}>
@@ -257,7 +308,7 @@ export default async function LeadsPage() {
 
                       <TableCell>
                         {formatarMoeda(
-                          lead.valorSolicitado ?? 0
+                          lead.valorSolicitado ?? 0,
                         )}
                       </TableCell>
 

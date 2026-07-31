@@ -107,7 +107,8 @@ model Lead {
   valorLiberado   Decimal? @default(0)
 
   observacoes String?
-
+proximoContato DateTime?
+ultimoContato   DateTime?
   vendedorId Int?
   vendedor   Vendedor? @relation(fields: [vendedorId], references: [id])
 
