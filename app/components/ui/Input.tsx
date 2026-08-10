@@ -19,7 +19,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
       id,
       ...props
     },
-    ref
+    ref,
   ) => {
     const inputId = id || props.name;
 
@@ -28,7 +28,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
         {label && (
           <label
             htmlFor={inputId}
-            className="mb-2 block text-sm font-medium text-slate-700"
+            className="mb-1.5 block text-xs font-medium text-slate-600"
           >
             {label}
           </label>
@@ -38,12 +38,13 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
           ref={ref}
           id={inputId}
           className={`
+            h-9
             w-full
-            rounded-lg
+            rounded-md
             border
             bg-white
-            px-4
-            py-2.5
+            px-3
+            text-sm
             text-slate-900
             outline-none
             transition
@@ -61,19 +62,19 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
         />
 
         {error && (
-          <p className="mt-1.5 text-sm text-red-600">
+          <p className="mt-1 text-xs text-red-600">
             {error}
           </p>
         )}
 
         {!error && helperText && (
-          <p className="mt-1.5 text-sm text-slate-500">
+          <p className="mt-1 text-xs text-slate-500">
             {helperText}
           </p>
         )}
       </div>
     );
-  }
+  },
 );
 
 Input.displayName = "Input";

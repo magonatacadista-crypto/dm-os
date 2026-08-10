@@ -21,6 +21,40 @@ enum StatusLead {
   PERDIDO
 }
 
+enum TipoHistoricoLead {
+  LEAD_CRIADO
+
+  LIGACAO
+  WHATSAPP
+  EMAIL
+  PRESENCIAL
+
+  DOCUMENTACAO
+  DIGITACAO
+  ANALISE
+
+  CONTRATO_PAGO
+  LEAD_PERDIDO
+
+  STATUS_ALTERADO
+  BANCO_ALTERADO
+  CONVENIO_ALTERADO
+  PRODUTO_ALTERADO
+  VENDEDOR_ALTERADO
+
+  PROXIMO_CONTATO_ALTERADO
+  PROPOSTA_ALTERADA
+}
+
+enum StatusProposta {
+  RASCUNHO
+  EM_ANALISE
+  APROVADA
+  REPROVADA
+  PAGA
+  CANCELADA
+}
+
 model Cliente {
   id       Int      @id @default(autoincrement())
   nome     String
@@ -50,7 +84,8 @@ model Vendedor {
   criadoEm       DateTime  @default(now())
   atualizadoEm   DateTime  @updatedAt
 
-  leads Lead[]
+  leads     Lead[]
+  propostas Proposta[]
 }
 
 model Banco {
@@ -62,7 +97,8 @@ model Banco {
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 
-  leads Lead[]
+  leads     Lead[]
+  propostas Proposta[]
 }
 
 model Convenio {
@@ -74,7 +110,21 @@ model Convenio {
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 
-  leads Lead[]
+  leads     Lead[]
+  propostas Proposta[]
+}
+
+model Produto {
+  id     Int     @id @default(autoincrement())
+  nome   String  @unique
+  codigo String?
+  ativo  Boolean @default(true)
+
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  leads     Lead[]
+  propostas Proposta[]
 }
 
 model Lead {
@@ -101,14 +151,69 @@ model Lead {
   bancoId       Int?
   bancoCadastro Banco? @relation(fields: [bancoId], references: [id])
 
+  // Campo antigo mantido temporariamente para preservar dados existentes.
   produto String?
+
+  produtoId       Int?
+  produtoCadastro Produto? @relation(fields: [produtoId], references: [id])
 
   valorSolicitado Decimal? @default(0)
   valorLiberado   Decimal? @default(0)
 
+  observacoes    String?
+  proximoContato DateTime?
+  ultimoContato  DateTime?
+
+  vendedorId Int?
+  vendedor   Vendedor? @relation(fields: [vendedorId], references: [id])
+
+  historicos   HistoricoLead[]
+  propostas    Proposta[]
+  criadoEm     DateTime        @default(now())
+  atualizadoEm DateTime        @updatedAt
+}
+
+model HistoricoLead {
+  id Int @id @default(autoincrement())
+
+  tipo      TipoHistoricoLead
+  descricao String
+
+  valorAnterior String?
+  valorNovo     String?
+
+  leadId Int
+  lead   Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  criadoEm DateTime @default(now())
+}
+
+model Proposta {
+  id Int @id @default(autoincrement())
+
+  status StatusProposta @default(RASCUNHO)
+
+  valorSolicitado Decimal @default(0)
+  valorAprovado   Decimal @default(0)
+
+  prazo        Int?
+  valorParcela Decimal?
+  taxa         Decimal?
+
   observacoes String?
-proximoContato DateTime?
-ultimoContato   DateTime?
+
+  leadId Int
+  lead   Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  bancoId Int?
+  banco   Banco? @relation(fields: [bancoId], references: [id])
+
+  convenioId Int?
+  convenio   Convenio? @relation(fields: [convenioId], references: [id])
+
+  produtoId Int?
+  produto   Produto? @relation(fields: [produtoId], references: [id])
+
   vendedorId Int?
   vendedor   Vendedor? @relation(fields: [vendedorId], references: [id])
 

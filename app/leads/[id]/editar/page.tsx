@@ -38,56 +38,70 @@ export default async function EditarLeadPage({ params }: Props) {
     notFound();
   }
 
-  const [lead, bancos, convenios, vendedores] =
-    await Promise.all([
-      prisma.lead.findUnique({
-        where: {
-          id: leadId,
-        },
-      }),
+  const [lead, bancos, convenios, vendedores, produtos] =
+  await Promise.all([
+    prisma.lead.findUnique({
+      where: {
+        id: leadId,
+      },
+    }),
 
-      prisma.banco.findMany({
-        where: {
-          ativo: true,
-        },
-        orderBy: {
-          nome: "asc",
-        },
-        select: {
-          id: true,
-          nome: true,
-          codigo: true,
-        },
-      }),
+    prisma.banco.findMany({
+      where: {
+        ativo: true,
+      },
+      orderBy: {
+        nome: "asc",
+      },
+      select: {
+        id: true,
+        nome: true,
+        codigo: true,
+      },
+    }),
 
-      prisma.convenio.findMany({
-        where: {
-          ativo: true,
-        },
-        orderBy: {
-          nome: "asc",
-        },
-        select: {
-          id: true,
-          nome: true,
-          codigo: true,
-        },
-      }),
+    prisma.convenio.findMany({
+      where: {
+        ativo: true,
+      },
+      orderBy: {
+        nome: "asc",
+      },
+      select: {
+        id: true,
+        nome: true,
+        codigo: true,
+      },
+    }),
 
-      prisma.vendedor.findMany({
-        where: {
-          situacao: "ATIVO",
-        },
-        orderBy: {
-          nome: "asc",
-        },
-        select: {
-          id: true,
-          nome: true,
-          matricula: true,
-        },
-      }),
-    ]);
+    prisma.vendedor.findMany({
+      where: {
+        situacao: "ATIVO",
+      },
+      orderBy: {
+        nome: "asc",
+      },
+      select: {
+        id: true,
+        nome: true,
+        matricula: true,
+      },
+    }),
+
+    prisma.produto.findMany({
+      where: {
+        ativo: true,
+      },
+      orderBy: {
+        nome: "asc",
+      },
+      select: {
+        id: true,
+        nome: true,
+        codigo: true,
+      },
+    }),
+  ]);
 
   if (!lead) {
     notFound();

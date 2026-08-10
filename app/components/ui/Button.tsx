@@ -1,4 +1,7 @@
-import { ButtonHTMLAttributes, ReactNode } from "react";
+import {
+  ButtonHTMLAttributes,
+  ReactNode,
+} from "react";
 
 type Variant =
   | "primary"
@@ -7,10 +10,11 @@ type Variant =
   | "warning"
   | "danger";
 
-type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: Variant;
-  children: ReactNode;
-};
+type ButtonProps =
+  ButtonHTMLAttributes<HTMLButtonElement> & {
+    variant?: Variant;
+    children: ReactNode;
+  };
 
 const variants: Record<Variant, string> = {
   primary:
@@ -38,15 +42,16 @@ export default function Button({
       disabled={disabled}
       className={`
         inline-flex
+        h-9
         items-center
         justify-center
-        rounded-lg
-        px-4
-        py-2
+        rounded-md
+        px-3.5
+        text-sm
         font-medium
         transition
-        disabled:opacity-50
         disabled:cursor-not-allowed
+        disabled:opacity-50
         ${variants[variant]}
         ${className}
       `}

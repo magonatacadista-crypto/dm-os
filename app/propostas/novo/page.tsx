@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { notFound } from "next/navigation";
 
 import Sidebar from "../../components/layout/Sidebar";
 import Button from "../../components/ui/Button";
@@ -7,13 +8,42 @@ import Input from "../../components/ui/Input";
 import PageHeader from "../../components/ui/PageHeader";
 
 import { prisma } from "../../lib/prisma";
-import { criarLead } from "../actions";
+import { criarProposta } from "../actions";
 
-export const dynamic = "force-dynamic";
+type Props = {
+  searchParams: Promise<{
+    leadId?: string;
+  }>;
+};
 
-export default async function NovoLeadPage() {
-  const [bancos, convenios, vendedores, produtos] =
+export default async function NovaPropostaPage({
+  searchParams,
+}: Props) {
+  const { leadId } = await searchParams;
+  const id = Number(leadId);
+
+  if (!Number.isInteger(id) || id <= 0) {
+    notFound();
+  }
+
+  const [lead, bancos, convenios, produtos, vendedores] =
     await Promise.all([
+      prisma.lead.findUnique({
+        where: {
+          id,
+        },
+        select: {
+          id: true,
+          nome: true,
+          telefone: true,
+          bancoId: true,
+          convenioId: true,
+          produtoId: true,
+          vendedorId: true,
+          valorSolicitado: true,
+        },
+      }),
+
       prisma.banco.findMany({
         where: {
           ativo: true,
@@ -42,20 +72,6 @@ export default async function NovoLeadPage() {
         },
       }),
 
-      prisma.vendedor.findMany({
-        where: {
-          situacao: "ATIVO",
-        },
-        orderBy: {
-          nome: "asc",
-        },
-        select: {
-          id: true,
-          nome: true,
-          matricula: true,
-        },
-      }),
-
       prisma.produto.findMany({
         where: {
           ativo: true,
@@ -69,7 +85,27 @@ export default async function NovoLeadPage() {
           codigo: true,
         },
       }),
+
+      prisma.vendedor.findMany({
+        where: {
+          situacao: "ATIVO",
+        },
+        orderBy: {
+          nome: "asc",
+        },
+        select: {
+          id: true,
+          nome: true,
+          matricula: true,
+        },
+      }),
     ]);
+
+  if (!lead) {
+    notFound();
+  }
+
+  const salvarProposta = criarProposta.bind(null, lead.id);
 
   return (
     <div className="flex">
@@ -77,88 +113,64 @@ export default async function NovoLeadPage() {
 
       <main className="min-h-screen flex-1 space-y-6 bg-slate-100 p-10">
         <PageHeader
-          title="Novo Lead"
-          subtitle="Cadastre uma nova oportunidade comercial."
+          title="Nova Proposta"
+          subtitle={`Cadastre uma proposta para ${lead.nome}.`}
         />
 
         <Card>
-          <form action={criarLead}>
+          <div className="mb-6 rounded-lg border border-slate-200 bg-slate-50 p-5">
+            <p className="text-sm text-slate-500">
+              Lead selecionado
+            </p>
+
+            <h2 className="mt-2 text-xl font-bold text-slate-900">
+              {lead.nome}
+            </h2>
+
+            <p className="mt-1 text-slate-500">
+              {lead.telefone}
+            </p>
+
+            <p className="mt-2 text-sm text-slate-400">
+              ID do Lead: {lead.id}
+            </p>
+          </div>
+
+          <form action={salvarProposta}>
             <div className="grid gap-5 md:grid-cols-2">
-              <Input
-                label="Nome"
-                name="nome"
-                placeholder="Nome completo"
-                required
-              />
-
-              <Input
-                label="CPF"
-                name="cpf"
-                placeholder="000.000.000-00"
-              />
-
-              <Input
-                label="Telefone"
-                name="telefone"
-                placeholder="(16) 99999-9999"
-                required
-              />
-
-              <Input
-                label="WhatsApp"
-                name="whatsapp"
-                placeholder="(16) 99999-9999"
-              />
-
-              <Input
-                label="E-mail"
-                name="email"
-                type="email"
-                placeholder="cliente@email.com"
-              />
-
-              <Input
-                label="Origem"
-                name="origem"
-                placeholder="WhatsApp"
-                defaultValue="WhatsApp"
-              />
-
               <div className="w-full">
                 <label
-                  htmlFor="convenioId"
+                  htmlFor="status"
                   className="mb-2 block text-sm font-medium text-slate-700"
                 >
-                  Convênio
+                  Status
                 </label>
 
                 <select
-                  id="convenioId"
-                  name="convenioId"
-                  defaultValue=""
+                  id="status"
+                  name="status"
+                  defaultValue="RASCUNHO"
                   className="w-full rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                 >
-                  <option value="">
-                    Selecione um convênio
+                  <option value="RASCUNHO">
+                    Rascunho
                   </option>
-
-                  {convenios.map((convenio) => (
-                    <option
-                      key={convenio.id}
-                      value={convenio.id}
-                    >
-                      {convenio.codigo
-                        ? `${convenio.nome} — ${convenio.codigo}`
-                        : convenio.nome}
-                    </option>
-                  ))}
+                  <option value="EM_ANALISE">
+                    Em análise
+                  </option>
+                  <option value="APROVADA">
+                    Aprovada
+                  </option>
+                  <option value="REPROVADA">
+                    Reprovada
+                  </option>
+                  <option value="PAGA">
+                    Paga
+                  </option>
+                  <option value="CANCELADA">
+                    Cancelada
+                  </option>
                 </select>
-
-                {convenios.length === 0 && (
-                  <p className="mt-1.5 text-sm text-amber-600">
-                    Nenhum convênio ativo cadastrado.
-                  </p>
-                )}
               </div>
 
               <div className="w-full">
@@ -172,7 +184,7 @@ export default async function NovoLeadPage() {
                 <select
                   id="bancoId"
                   name="bancoId"
-                  defaultValue=""
+                  defaultValue={lead.bancoId ?? ""}
                   className="w-full rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                 >
                   <option value="">
@@ -190,49 +202,37 @@ export default async function NovoLeadPage() {
                     </option>
                   ))}
                 </select>
-
-                {bancos.length === 0 && (
-                  <p className="mt-1.5 text-sm text-amber-600">
-                    Nenhum banco ativo cadastrado.
-                  </p>
-                )}
               </div>
 
               <div className="w-full">
                 <label
-                  htmlFor="vendedorId"
+                  htmlFor="convenioId"
                   className="mb-2 block text-sm font-medium text-slate-700"
                 >
-                  Vendedor responsável
+                  Convênio
                 </label>
 
                 <select
-                  id="vendedorId"
-                  name="vendedorId"
-                  defaultValue=""
+                  id="convenioId"
+                  name="convenioId"
+                  defaultValue={lead.convenioId ?? ""}
                   className="w-full rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                 >
                   <option value="">
-                    Selecione um vendedor
+                    Selecione um convênio
                   </option>
 
-                  {vendedores.map((vendedor) => (
+                  {convenios.map((convenio) => (
                     <option
-                      key={vendedor.id}
-                      value={vendedor.id}
+                      key={convenio.id}
+                      value={convenio.id}
                     >
-                      {vendedor.matricula
-                        ? `${vendedor.nome} — ${vendedor.matricula}`
-                        : vendedor.nome}
+                      {convenio.codigo
+                        ? `${convenio.nome} — ${convenio.codigo}`
+                        : convenio.nome}
                     </option>
                   ))}
                 </select>
-
-                {vendedores.length === 0 && (
-                  <p className="mt-1.5 text-sm text-amber-600">
-                    Nenhum vendedor ativo cadastrado.
-                  </p>
-                )}
               </div>
 
               <div className="w-full">
@@ -246,7 +246,7 @@ export default async function NovoLeadPage() {
                 <select
                   id="produtoId"
                   name="produtoId"
-                  defaultValue=""
+                  defaultValue={lead.produtoId ?? ""}
                   className="w-full rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                 >
                   <option value="">
@@ -264,32 +264,75 @@ export default async function NovoLeadPage() {
                     </option>
                   ))}
                 </select>
+              </div>
 
-                {produtos.length === 0 && (
-                  <p className="mt-1.5 text-sm text-amber-600">
-                    Nenhum produto ativo cadastrado.
-                  </p>
-                )}
+              <div className="w-full">
+                <label
+                  htmlFor="vendedorId"
+                  className="mb-2 block text-sm font-medium text-slate-700"
+                >
+                  Vendedor responsável
+                </label>
+
+                <select
+                  id="vendedorId"
+                  name="vendedorId"
+                  defaultValue={lead.vendedorId ?? ""}
+                  className="w-full rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                >
+                  <option value="">
+                    Selecione um vendedor
+                  </option>
+
+                  {vendedores.map((vendedor) => (
+                    <option
+                      key={vendedor.id}
+                      value={vendedor.id}
+                    >
+                      {vendedor.matricula
+                        ? `${vendedor.nome} — ${vendedor.matricula}`
+                        : vendedor.nome}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <Input
                 label="Valor solicitado"
                 name="valorSolicitado"
+                defaultValue={String(
+                  lead.valorSolicitado ?? 0,
+                )}
+                inputMode="decimal"
+              />
+
+              <Input
+                label="Valor aprovado"
+                name="valorAprovado"
                 placeholder="0,00"
                 inputMode="decimal"
               />
 
               <Input
-                label="Valor liberado"
-                name="valorLiberado"
+                label="Prazo"
+                name="prazo"
+                type="number"
+                placeholder="Ex.: 84"
+                min="0"
+              />
+
+              <Input
+                label="Valor da parcela"
+                name="valorParcela"
                 placeholder="0,00"
                 inputMode="decimal"
               />
 
               <Input
-                label="Próximo contato — data e hora"
-                name="proximoContato"
-                type="datetime-local"
+                label="Taxa"
+                name="taxa"
+                placeholder="0,00"
+                inputMode="decimal"
               />
             </div>
 
@@ -304,21 +347,21 @@ export default async function NovoLeadPage() {
               <textarea
                 id="observacoes"
                 name="observacoes"
-                className="min-h-32 w-full rounded-lg border border-slate-300 p-3 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                placeholder="Digite observações sobre o atendimento..."
+                className="min-h-36 w-full rounded-lg border border-slate-300 p-4 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                placeholder="Inclua informações relevantes sobre a proposta..."
               />
             </div>
 
             <div className="mt-8 flex justify-end gap-3">
               <Link
-                href="/leads"
-                className="inline-flex items-center justify-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                href={`/leads/${lead.id}`}
+                className="inline-flex items-center justify-center rounded-lg border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
               >
                 Cancelar
               </Link>
 
               <Button type="submit">
-                Salvar Lead
+                Salvar Proposta
               </Button>
             </div>
           </form>

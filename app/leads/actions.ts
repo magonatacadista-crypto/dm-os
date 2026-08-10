@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 
 import { StatusLead } from "../generated/prisma/client";
+import { registrarHistoricoLead } from "../lib/historicoLead";
 import { prisma } from "../lib/prisma";
 
 function converterValorMonetario(
@@ -131,6 +132,32 @@ async function buscarConvenioAtivo(
   return convenio.nome;
 }
 
+async function buscarProdutoAtivo(
+  produtoId: number | null,
+) {
+  if (!produtoId) {
+    return null;
+  }
+
+  const produto = await prisma.produto.findFirst({
+    where: {
+      id: produtoId,
+      ativo: true,
+    },
+    select: {
+      nome: true,
+    },
+  });
+
+  if (!produto) {
+    throw new Error(
+      "O produto selecionado é inválido ou está inativo.",
+    );
+  }
+
+  return produto.nome;
+}
+
 async function validarVendedorAtivo(
   vendedorId: number | null,
 ) {
@@ -156,21 +183,30 @@ async function validarVendedorAtivo(
 }
 
 export async function criarLead(formData: FormData) {
-  const nome = String(formData.get("nome") ?? "").trim();
-  const cpf = String(formData.get("cpf") ?? "").trim();
+  const nome = String(
+    formData.get("nome") ?? "",
+  ).trim();
+
+  const cpf = String(
+    formData.get("cpf") ?? "",
+  ).trim();
+
   const telefone = String(
     formData.get("telefone") ?? "",
   ).trim();
+
   const whatsapp = String(
     formData.get("whatsapp") ?? "",
   ).trim();
-  const email = String(formData.get("email") ?? "").trim();
+
+  const email = String(
+    formData.get("email") ?? "",
+  ).trim();
+
   const origem = String(
     formData.get("origem") ?? "WhatsApp",
   ).trim();
-  const produto = String(
-    formData.get("produto") ?? "",
-  ).trim();
+
   const observacoes = String(
     formData.get("observacoes") ?? "",
   ).trim();
@@ -187,12 +223,12 @@ export async function criarLead(formData: FormData) {
     formData.get("vendedorId"),
   );
 
-  const proximoContato = converterDataOpcional(
-    formData.get("proximoContato"),
+  const produtoId = converterIdOpcional(
+    formData.get("produtoId"),
   );
 
-  const ultimoContato = converterDataOpcional(
-    formData.get("ultimoContato"),
+  const proximoContato = converterDataOpcional(
+    formData.get("proximoContato"),
   );
 
   if (!nome || !telefone) {
@@ -201,14 +237,16 @@ export async function criarLead(formData: FormData) {
     );
   }
 
-  const [nomeBanco, nomeConvenio] = await Promise.all([
-    buscarBancoAtivo(bancoId),
-    buscarConvenioAtivo(convenioId),
-  ]);
+  const [nomeBanco, nomeConvenio, nomeProduto] =
+    await Promise.all([
+      buscarBancoAtivo(bancoId),
+      buscarConvenioAtivo(convenioId),
+      buscarProdutoAtivo(produtoId),
+    ]);
 
   await validarVendedorAtivo(vendedorId);
 
-  await prisma.lead.create({
+  const lead = await prisma.lead.create({
     data: {
       nome,
       cpf: cpf || null,
@@ -223,9 +261,10 @@ export async function criarLead(formData: FormData) {
       convenio: nomeConvenio,
       convenioId,
 
-      vendedorId,
+      produto: nomeProduto,
+      produtoId,
 
-      produto: produto || null,
+      vendedorId,
 
       valorSolicitado: converterValorMonetario(
         formData.get("valorSolicitado"),
@@ -237,8 +276,13 @@ export async function criarLead(formData: FormData) {
 
       observacoes: observacoes || null,
       proximoContato,
-      ultimoContato,
     },
+  });
+
+  await registrarHistoricoLead({
+    leadId: lead.id,
+    tipo: "LEAD_CRIADO",
+    descricao: "Lead cadastrado no sistema.",
   });
 
   redirect("/leads");
@@ -248,20 +292,28 @@ export async function editarLead(
   id: number,
   formData: FormData,
 ) {
-  const nome = String(formData.get("nome") ?? "").trim();
-  const cpf = String(formData.get("cpf") ?? "").trim();
+  const nome = String(
+    formData.get("nome") ?? "",
+  ).trim();
+
+  const cpf = String(
+    formData.get("cpf") ?? "",
+  ).trim();
+
   const telefone = String(
     formData.get("telefone") ?? "",
   ).trim();
+
   const whatsapp = String(
     formData.get("whatsapp") ?? "",
   ).trim();
-  const email = String(formData.get("email") ?? "").trim();
+
+  const email = String(
+    formData.get("email") ?? "",
+  ).trim();
+
   const origem = String(
     formData.get("origem") ?? "",
-  ).trim();
-  const produto = String(
-    formData.get("produto") ?? "",
   ).trim();
 
   const status = converterStatusLead(
@@ -284,12 +336,12 @@ export async function editarLead(
     formData.get("vendedorId"),
   );
 
-  const proximoContato = converterDataOpcional(
-    formData.get("proximoContato"),
+  const produtoId = converterIdOpcional(
+    formData.get("produtoId"),
   );
 
-  const ultimoContato = converterDataOpcional(
-    formData.get("ultimoContato"),
+  const proximoContato = converterDataOpcional(
+    formData.get("proximoContato"),
   );
 
   if (!Number.isInteger(id) || id <= 0) {
@@ -302,10 +354,12 @@ export async function editarLead(
     );
   }
 
-  const [nomeBanco, nomeConvenio] = await Promise.all([
-    buscarBancoAtivo(bancoId),
-    buscarConvenioAtivo(convenioId),
-  ]);
+  const [nomeBanco, nomeConvenio, nomeProduto] =
+    await Promise.all([
+      buscarBancoAtivo(bancoId),
+      buscarConvenioAtivo(convenioId),
+      buscarProdutoAtivo(produtoId),
+    ]);
 
   await validarVendedorAtivo(vendedorId);
 
@@ -327,9 +381,10 @@ export async function editarLead(
       convenio: nomeConvenio,
       convenioId,
 
-      vendedorId,
+      produto: nomeProduto,
+      produtoId,
 
-      produto: produto || null,
+      vendedorId,
       status,
 
       valorSolicitado: converterValorMonetario(
@@ -342,7 +397,6 @@ export async function editarLead(
 
       observacoes: observacoes || null,
       proximoContato,
-      ultimoContato,
     },
   });
 
