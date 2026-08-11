@@ -24,40 +24,30 @@ function formatarMoeda(valor: unknown) {
   }).format(Number.isFinite(numero) ? numero : 0);
 }
 
-function formatarDataHora(data: Date) {
+function formatarData(data: Date | null) {
+  if (!data) {
+    return "-";
+  }
+
   return new Intl.DateTimeFormat("pt-BR", {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
   }).format(data);
 }
 
 function obterStatus(status: string) {
   switch (status) {
-    case "APROVADA":
+    case "RASCUNHO":
       return {
-        texto: "Aprovada",
-        variante: "success" as const,
+        texto: "Rascunho",
+        variante: "default" as const,
       };
 
-    case "PAGA":
+    case "DIGITADO":
       return {
-        texto: "Paga",
-        variante: "success" as const,
-      };
-
-    case "REPROVADA":
-      return {
-        texto: "Reprovada",
-        variante: "danger" as const,
-      };
-
-    case "CANCELADA":
-      return {
-        texto: "Cancelada",
-        variante: "danger" as const,
+        texto: "Digitado",
+        variante: "info" as const,
       };
 
     case "EM_ANALISE":
@@ -66,68 +56,65 @@ function obterStatus(status: string) {
         variante: "warning" as const,
       };
 
-    case "RASCUNHO":
+    case "APROVADO":
+      return {
+        texto: "Aprovado",
+        variante: "success" as const,
+      };
+
+    case "PAGO":
+      return {
+        texto: "Pago",
+        variante: "success" as const,
+      };
+
+    case "CANCELADO":
+      return {
+        texto: "Cancelado",
+        variante: "danger" as const,
+      };
+
     default:
       return {
-        texto: "Rascunho",
+        texto: status,
         variante: "default" as const,
       };
   }
 }
 
-export default async function PropostaPage({
+export default async function ContratoPage({
   params,
 }: Props) {
   const { id } = await params;
-  const propostaId = Number(id);
+  const contratoId = Number(id);
 
   if (
-    !Number.isInteger(propostaId) ||
-    propostaId <= 0
+    !Number.isInteger(contratoId) ||
+    contratoId <= 0
   ) {
     notFound();
   }
 
-  const proposta =
-    await prisma.proposta.findUnique({
-      where: {
-        id: propostaId,
-      },
-
-      include: {
-  lead: true,
-  banco: true,
-  convenio: true,
-  produto: true,
-  vendedor: true,
-
-  contratos: {
-    select: {
-      id: true,
-      numero: true,
-      status: true,
+  const contrato = await prisma.contrato.findUnique({
+    where: {
+      id: contratoId,
     },
-    orderBy: {
-      criadoEm: "desc",
-    },
-    take: 1,
-  },
-},
-    });
 
-  if (!proposta) {
+    include: {
+      lead: true,
+      proposta: true,
+      banco: true,
+      convenio: true,
+      produto: true,
+      vendedor: true,
+    },
+  });
+
+  if (!contrato) {
     notFound();
   }
 
-  const status = obterStatus(
-    proposta.status,
-      );
-      const contratoExistente =
-  proposta.contratos[0] ?? null;
-
-const podeGerarContrato =
-  proposta.status === "APROVADA" ||
-  proposta.status === "PAGA";
+  const status = obterStatus(contrato.status);
 
   return (
     <div className="flex">
@@ -135,15 +122,19 @@ const podeGerarContrato =
 
       <main className="min-h-screen min-w-0 flex-1 space-y-4 bg-slate-100 p-4 lg:p-6">
         <PageHeader
-          title={`Proposta #${proposta.id}`}
-          subtitle={`Lead: ${proposta.lead.nome}`}
+          title={
+            contrato.numero
+              ? `Contrato ${contrato.numero}`
+              : `Contrato #${contrato.id}`
+          }
+          subtitle={`Lead: ${contrato.lead.nome}`}
         />
 
         <Card>
-          <div className="mb-3 flex items-center justify-between border-b border-slate-200 pb-3">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-3">
             <div>
               <h2 className="text-base font-semibold text-slate-900">
-                Resumo da Proposta
+                Resumo do Contrato
               </h2>
 
               <p className="text-xs text-slate-500">
@@ -158,52 +149,57 @@ const podeGerarContrato =
 
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             <Info
-              label="Lead"
-              value={proposta.lead.nome}
+              label="Cliente"
+              value={contrato.lead.nome}
+            />
+
+            <Info
+              label="Proposta"
+              value={`#${contrato.proposta.id}`}
             />
 
             <Info
               label="Banco"
-              value={proposta.banco?.nome}
+              value={contrato.banco?.nome}
             />
 
             <Info
               label="Convênio"
-              value={proposta.convenio?.nome}
+              value={contrato.convenio?.nome}
             />
 
             <Info
               label="Produto"
-              value={proposta.produto?.nome}
+              value={contrato.produto?.nome}
             />
 
             <Info
               label="Vendedor"
               value={
-                proposta.vendedor?.nome ??
+                contrato.vendedor?.nome ??
                 "Não atribuído"
               }
             />
 
             <Info
-              label="Valor solicitado"
+              label="Valor contratado"
               value={formatarMoeda(
-                proposta.valorSolicitado,
+                contrato.valorContratado,
               )}
             />
 
             <Info
-              label="Valor aprovado"
+              label="Valor liberado"
               value={formatarMoeda(
-                proposta.valorAprovado,
+                contrato.valorLiberado,
               )}
             />
 
             <Info
               label="Prazo"
               value={
-                proposta.prazo
-                  ? `${proposta.prazo} meses`
+                contrato.prazo
+                  ? `${contrato.prazo} meses`
                   : null
               }
             />
@@ -211,32 +207,39 @@ const podeGerarContrato =
             <Info
               label="Parcela"
               value={formatarMoeda(
-                proposta.valorParcela,
+                contrato.valorParcela,
               )}
             />
 
             <Info
               label="Taxa"
               value={
-                proposta.taxa
+                contrato.taxa
                   ? `${Number(
-                      proposta.taxa,
+                      contrato.taxa,
                     ).toFixed(2)}%`
                   : null
               }
             />
 
             <Info
-              label="Criada em"
-              value={formatarDataHora(
-                proposta.criadoEm,
+              label="Data de digitação"
+              value={formatarData(
+                contrato.dataDigitacao,
               )}
             />
 
             <Info
-              label="Atualizada em"
-              value={formatarDataHora(
-                proposta.atualizadoEm,
+              label="Data de aprovação"
+              value={formatarData(
+                contrato.dataAprovacao,
+              )}
+            />
+
+            <Info
+              label="Data de pagamento"
+              value={formatarData(
+                contrato.dataPagamento,
               )}
             />
           </div>
@@ -248,44 +251,40 @@ const podeGerarContrato =
           </h2>
 
           <p className="whitespace-pre-wrap text-sm text-slate-600">
-            {proposta.observacoes ||
+            {contrato.observacoes ||
               "Nenhuma observação cadastrada."}
           </p>
         </Card>
 
         <div className="flex flex-wrap gap-2">
-          <Link
-            href={`/leads/${proposta.leadId}`}
-          >
+          <Link href="/contratos">
             <Button variant="secondary">
-              Voltar ao Lead
+              Voltar aos Contratos
             </Button>
           </Link>
 
           <Link
-            href={`/propostas/${proposta.id}/editar`}
+            href={`/propostas/${contrato.propostaId}`}
           >
-            <Button>
-              Editar Proposta
+            <Button variant="secondary">
+              Abrir Proposta
+            </Button>            
+          </Link>
+          <Link
+  href={`/contratos/${contrato.id}/editar`}
+>
+  <Button>
+    Editar Contrato
+  </Button>
+</Link>
+
+          <Link
+            href={`/leads/${contrato.leadId}`}
+          >
+            <Button variant="secondary">
+              Abrir Lead
             </Button>
           </Link>
-          {contratoExistente ? (
-  <Link
-    href={`/contratos/${contratoExistente.id}`}
-  >
-    <Button variant="secondary">
-      Abrir Contrato
-    </Button>
-  </Link>
-) : podeGerarContrato ? (
-  <Link
-    href={`/contratos/novo?propostaId=${proposta.id}`}
-  >
-    <Button>
-      Gerar Contrato
-    </Button>
-  </Link>
-) : null}
         </div>
       </main>
     </div>

@@ -44,6 +44,7 @@ enum TipoHistoricoLead {
 
   PROXIMO_CONTATO_ALTERADO
   PROPOSTA_ALTERADA
+  CONTRATO_ALTERADO
 }
 
 enum StatusProposta {
@@ -53,6 +54,15 @@ enum StatusProposta {
   REPROVADA
   PAGA
   CANCELADA
+}
+
+enum StatusContrato {
+  RASCUNHO
+  DIGITADO
+  EM_ANALISE
+  APROVADO
+  PAGO
+  CANCELADO
 }
 
 model Cliente {
@@ -86,6 +96,7 @@ model Vendedor {
 
   leads     Lead[]
   propostas Proposta[]
+  contratos Contrato[]
 }
 
 model Banco {
@@ -99,6 +110,7 @@ model Banco {
 
   leads     Lead[]
   propostas Proposta[]
+  contratos Contrato[]
 }
 
 model Convenio {
@@ -112,6 +124,7 @@ model Convenio {
 
   leads     Lead[]
   propostas Proposta[]
+  contratos Contrato[]
 }
 
 model Produto {
@@ -125,6 +138,7 @@ model Produto {
 
   leads     Lead[]
   propostas Proposta[]
+  contratos Contrato[]
 }
 
 model Lead {
@@ -171,6 +185,7 @@ model Lead {
   propostas    Proposta[]
   criadoEm     DateTime        @default(now())
   atualizadoEm DateTime        @updatedAt
+  contratos    Contrato[]
 }
 
 model HistoricoLead {
@@ -201,6 +216,49 @@ model Proposta {
   taxa         Decimal?
 
   observacoes String?
+
+  leadId Int
+  lead   Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  bancoId Int?
+  banco   Banco? @relation(fields: [bancoId], references: [id])
+
+  convenioId Int?
+  convenio   Convenio? @relation(fields: [convenioId], references: [id])
+
+  produtoId Int?
+  produto   Produto? @relation(fields: [produtoId], references: [id])
+
+  vendedorId Int?
+  vendedor   Vendedor? @relation(fields: [vendedorId], references: [id])
+
+  criadoEm     DateTime   @default(now())
+  atualizadoEm DateTime   @updatedAt
+  contratos    Contrato[]
+}
+
+model Contrato {
+  id Int @id @default(autoincrement())
+
+  numero String? @unique
+
+  status StatusContrato @default(RASCUNHO)
+
+  valorContratado Decimal @default(0)
+  valorLiberado   Decimal @default(0)
+
+  prazo        Int?
+  valorParcela Decimal?
+  taxa         Decimal?
+
+  dataDigitacao DateTime?
+  dataAprovacao DateTime?
+  dataPagamento DateTime?
+
+  observacoes String?
+
+  propostaId Int
+  proposta   Proposta @relation(fields: [propostaId], references: [id], onDelete: Cascade)
 
   leadId Int
   lead   Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
