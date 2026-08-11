@@ -20,6 +20,9 @@ type Props = {
     status?: string;
     bancoId?: string;
     vendedorId?: string;
+    dataInicial?: string;
+    dataFinal?: string;
+    busca?: string;
   }>;
 };
 
@@ -111,9 +114,7 @@ function converterStatusFiltro(
   }
 }
 
-function converterIdFiltro(
-  valor: string | undefined,
-) {
+function converterIdFiltro(valor: string | undefined) {
   if (!valor) {
     return undefined;
   }
@@ -127,10 +128,40 @@ function converterIdFiltro(
   return numero;
 }
 
+function converterDataInicial(valor: string | undefined) {
+  if (!valor) {
+    return undefined;
+  }
+
+  const data = new Date(`${valor}T00:00:00`);
+
+  if (Number.isNaN(data.getTime())) {
+    return undefined;
+  }
+
+  return data;
+}
+
+function converterDataFinal(valor: string | undefined) {
+  if (!valor) {
+    return undefined;
+  }
+
+  const data = new Date(`${valor}T23:59:59.999`);
+
+  if (Number.isNaN(data.getTime())) {
+    return undefined;
+  }
+
+  return data;
+}
+
 export default async function PropostasPage({
   searchParams,
 }: Props) {
   const parametros = await searchParams;
+
+  const busca = String(parametros.busca ?? "").trim();
 
   const statusFiltro = converterStatusFiltro(
     parametros.status,
@@ -144,91 +175,149 @@ export default async function PropostasPage({
     parametros.vendedorId,
   );
 
-  const [propostas, bancos, vendedores] =
-    await Promise.all([
-      prisma.proposta.findMany({
-        where: {
-          ...(statusFiltro
-            ? {
-                status: statusFiltro,
-              }
-            : {}),
+  const dataInicialFiltro = converterDataInicial(
+    parametros.dataInicial,
+  );
 
-          ...(bancoIdFiltro
-            ? {
-                bancoId: bancoIdFiltro,
-              }
-            : {}),
+  const dataFinalFiltro = converterDataFinal(
+    parametros.dataFinal,
+  );
 
-          ...(vendedorIdFiltro
-            ? {
-                vendedorId: vendedorIdFiltro,
-              }
-            : {}),
-        },
+  const numeroProposta = Number(busca);
+  const buscaPorNumero =
+    Number.isInteger(numeroProposta) && numeroProposta > 0;
 
-        orderBy: {
-          criadoEm: "desc",
-        },
+  const [propostas, bancos, vendedores] = await Promise.all([
+    prisma.proposta.findMany({
+      where: {
+        ...(statusFiltro
+          ? {
+              status: statusFiltro,
+            }
+          : {}),
 
-        include: {
-          lead: {
-            select: {
-              id: true,
-              nome: true,
-            },
+        ...(bancoIdFiltro
+          ? {
+              bancoId: bancoIdFiltro,
+            }
+          : {}),
+
+        ...(vendedorIdFiltro
+          ? {
+              vendedorId: vendedorIdFiltro,
+            }
+          : {}),
+
+        ...(dataInicialFiltro || dataFinalFiltro
+          ? {
+              criadoEm: {
+                ...(dataInicialFiltro
+                  ? {
+                      gte: dataInicialFiltro,
+                    }
+                  : {}),
+
+                ...(dataFinalFiltro
+                  ? {
+                      lte: dataFinalFiltro,
+                    }
+                  : {}),
+              },
+            }
+          : {}),
+
+        ...(busca
+          ? {
+              OR: [
+                {
+                  lead: {
+                    is: {
+                      nome: {
+                        contains: busca,
+                      },
+                    },
+                  },
+                },
+                {
+                  lead: {
+                    is: {
+                      cpf: {
+                        contains: busca,
+                      },
+                    },
+                  },
+                },
+                ...(buscaPorNumero
+                  ? [
+                      {
+                        id: numeroProposta,
+                      },
+                    ]
+                  : []),
+              ],
+            }
+          : {}),
+      },
+
+      orderBy: {
+        criadoEm: "desc",
+      },
+
+      include: {
+        lead: {
+          select: {
+            id: true,
+            nome: true,
           },
+        },
 
-          banco: {
-            select: {
-              nome: true,
-            },
-          },
-
-          produto: {
-            select: {
-              nome: true,
-            },
-          },
-
-          vendedor: {
-            select: {
-              nome: true,
-            },
+        banco: {
+          select: {
+            nome: true,
           },
         },
-      }),
 
-      prisma.banco.findMany({
-        orderBy: {
-          nome: "asc",
+        produto: {
+          select: {
+            nome: true,
+          },
         },
 
-        select: {
-          id: true,
-          nome: true,
-          ativo: true,
+        vendedor: {
+          select: {
+            nome: true,
+          },
         },
-      }),
+      },
+    }),
 
-      prisma.vendedor.findMany({
-        orderBy: {
-          nome: "asc",
-        },
+    prisma.banco.findMany({
+      orderBy: {
+        nome: "asc",
+      },
+      select: {
+        id: true,
+        nome: true,
+        ativo: true,
+      },
+    }),
 
-        select: {
-          id: true,
-          nome: true,
-          situacao: true,
-        },
-      }),
-    ]);
+    prisma.vendedor.findMany({
+      orderBy: {
+        nome: "asc",
+      },
+      select: {
+        id: true,
+        nome: true,
+        situacao: true,
+      },
+    }),
+  ]);
 
   const totalPropostas = propostas.length;
 
   const emAnalise = propostas.filter(
-    (proposta) =>
-      proposta.status === "EM_ANALISE",
+    (proposta) => proposta.status === "EM_ANALISE",
   ).length;
 
   const aprovadas = propostas.filter(
@@ -239,15 +328,17 @@ export default async function PropostasPage({
 
   const valorAprovadoTotal = propostas.reduce(
     (total, proposta) =>
-      total +
-      Number(proposta.valorAprovado ?? 0),
+      total + Number(proposta.valorAprovado ?? 0),
     0,
   );
 
   const filtrosAtivos =
     Boolean(statusFiltro) ||
     Boolean(bancoIdFiltro) ||
-    Boolean(vendedorIdFiltro);
+    Boolean(vendedorIdFiltro) ||
+    Boolean(dataInicialFiltro) ||
+    Boolean(dataFinalFiltro) ||
+    Boolean(busca);
 
   return (
     <div className="flex">
@@ -258,8 +349,6 @@ export default async function PropostasPage({
           title="Propostas"
           subtitle="Acompanhe todas as propostas comerciais da operação."
         />
-
-        {/* INDICADORES */}
 
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           <Card>
@@ -273,9 +362,7 @@ export default async function PropostasPage({
               </strong>
 
               <Badge variant="info">
-                {filtrosAtivos
-                  ? "Filtradas"
-                  : "Carteira"}
+                {filtrosAtivos ? "Filtradas" : "Carteira"}
               </Badge>
             </div>
           </Card>
@@ -290,9 +377,7 @@ export default async function PropostasPage({
                 {emAnalise}
               </strong>
 
-              <Badge variant="warning">
-                Aguardando
-              </Badge>
+              <Badge variant="warning">Aguardando</Badge>
             </div>
           </Card>
 
@@ -306,9 +391,7 @@ export default async function PropostasPage({
                 {aprovadas}
               </strong>
 
-              <Badge variant="success">
-                Convertidas
-              </Badge>
+              <Badge variant="success">Convertidas</Badge>
             </div>
           </Card>
 
@@ -319,19 +402,13 @@ export default async function PropostasPage({
 
             <div className="mt-2 flex items-center justify-between gap-2">
               <strong className="text-xl text-slate-900">
-                {formatarMoeda(
-                  valorAprovadoTotal,
-                )}
+                {formatarMoeda(valorAprovadoTotal)}
               </strong>
 
-              <Badge>
-                Produção
-              </Badge>
+              <Badge>Produção</Badge>
             </div>
           </Card>
         </div>
-
-        {/* FILTROS */}
 
         <Card>
           <div className="mb-3">
@@ -346,8 +423,26 @@ export default async function PropostasPage({
 
           <form
             method="GET"
-            className="grid items-end gap-3 md:grid-cols-2 xl:grid-cols-[1fr_1fr_1fr_auto]"
+            className="grid items-end gap-3 md:grid-cols-2 xl:grid-cols-6"
           >
+            <div className="md:col-span-2 xl:col-span-6">
+              <label
+                htmlFor="busca"
+                className="mb-1.5 block text-xs font-medium text-slate-600"
+              >
+                Buscar
+              </label>
+
+              <input
+                id="busca"
+                name="busca"
+                type="text"
+                defaultValue={busca}
+                placeholder="Nome, CPF ou nº da proposta"
+                className="h-9 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              />
+            </div>
+
             <div>
               <label
                 htmlFor="status"
@@ -359,38 +454,16 @@ export default async function PropostasPage({
               <select
                 id="status"
                 name="status"
-                defaultValue={
-                  statusFiltro ?? ""
-                }
+                defaultValue={statusFiltro ?? ""}
                 className="h-9 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
               >
-                <option value="">
-                  Todos os status
-                </option>
-
-                <option value="RASCUNHO">
-                  Rascunho
-                </option>
-
-                <option value="EM_ANALISE">
-                  Em análise
-                </option>
-
-                <option value="APROVADA">
-                  Aprovada
-                </option>
-
-                <option value="REPROVADA">
-                  Reprovada
-                </option>
-
-                <option value="PAGA">
-                  Paga
-                </option>
-
-                <option value="CANCELADA">
-                  Cancelada
-                </option>
+                <option value="">Todos os status</option>
+                <option value="RASCUNHO">Rascunho</option>
+                <option value="EM_ANALISE">Em análise</option>
+                <option value="APROVADA">Aprovada</option>
+                <option value="REPROVADA">Reprovada</option>
+                <option value="PAGA">Paga</option>
+                <option value="CANCELADA">Cancelada</option>
               </select>
             </div>
 
@@ -406,25 +479,16 @@ export default async function PropostasPage({
                 id="bancoId"
                 name="bancoId"
                 defaultValue={
-                  bancoIdFiltro
-                    ? String(bancoIdFiltro)
-                    : ""
+                  bancoIdFiltro ? String(bancoIdFiltro) : ""
                 }
                 className="h-9 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
               >
-                <option value="">
-                  Todos os bancos
-                </option>
+                <option value="">Todos os bancos</option>
 
                 {bancos.map((banco) => (
-                  <option
-                    key={banco.id}
-                    value={banco.id}
-                  >
+                  <option key={banco.id} value={banco.id}>
                     {banco.nome}
-                    {!banco.ativo
-                      ? " — Inativo"
-                      : ""}
+                    {!banco.ativo ? " — Inativo" : ""}
                   </option>
                 ))}
               </select>
@@ -442,33 +506,55 @@ export default async function PropostasPage({
                 id="vendedorId"
                 name="vendedorId"
                 defaultValue={
-                  vendedorIdFiltro
-                    ? String(
-                        vendedorIdFiltro,
-                      )
-                    : ""
+                  vendedorIdFiltro ? String(vendedorIdFiltro) : ""
                 }
                 className="h-9 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
               >
-                <option value="">
-                  Todos os vendedores
-                </option>
+                <option value="">Todos os vendedores</option>
 
-                {vendedores.map(
-                  (vendedor) => (
-                    <option
-                      key={vendedor.id}
-                      value={vendedor.id}
-                    >
-                      {vendedor.nome}
-                      {vendedor.situacao !==
-                      "ATIVO"
-                        ? " — Inativo"
-                        : ""}
-                    </option>
-                  ),
-                )}
+                {vendedores.map((vendedor) => (
+                  <option key={vendedor.id} value={vendedor.id}>
+                    {vendedor.nome}
+                    {vendedor.situacao !== "ATIVO"
+                      ? " — Inativo"
+                      : ""}
+                  </option>
+                ))}
               </select>
+            </div>
+
+            <div>
+              <label
+                htmlFor="dataInicial"
+                className="mb-1.5 block text-xs font-medium text-slate-600"
+              >
+                Data inicial
+              </label>
+
+              <input
+                id="dataInicial"
+                name="dataInicial"
+                type="date"
+                defaultValue={parametros.dataInicial ?? ""}
+                className="h-9 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              />
+            </div>
+
+            <div>
+              <label
+                htmlFor="dataFinal"
+                className="mb-1.5 block text-xs font-medium text-slate-600"
+              >
+                Data final
+              </label>
+
+              <input
+                id="dataFinal"
+                name="dataFinal"
+                type="date"
+                defaultValue={parametros.dataFinal ?? ""}
+                className="h-9 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              />
             </div>
 
             <div className="flex gap-2">
@@ -491,8 +577,6 @@ export default async function PropostasPage({
           </form>
         </Card>
 
-        {/* TABELA */}
-
         <Card>
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <div>
@@ -508,9 +592,7 @@ export default async function PropostasPage({
             </div>
 
             {filtrosAtivos && (
-              <Badge variant="info">
-                Filtros ativos
-              </Badge>
+              <Badge variant="info">Filtros ativos</Badge>
             )}
           </div>
 
@@ -522,42 +604,15 @@ export default async function PropostasPage({
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>
-                    Proposta
-                  </TableHead>
-
-                  <TableHead>
-                    Cliente
-                  </TableHead>
-
-                  <TableHead>
-                    Banco
-                  </TableHead>
-
-                  <TableHead>
-                    Produto
-                  </TableHead>
-
-                  <TableHead>
-                    Vendedor
-                  </TableHead>
-
-                  <TableHead>
-                    Status
-                  </TableHead>
-
-                  <TableHead>
-                    Solicitado
-                  </TableHead>
-
-                  <TableHead>
-                    Aprovado
-                  </TableHead>
-
-                  <TableHead>
-                    Cadastro
-                  </TableHead>
-
+                  <TableHead>Proposta</TableHead>
+                  <TableHead>Cliente</TableHead>
+                  <TableHead>Banco</TableHead>
+                  <TableHead>Produto</TableHead>
+                  <TableHead>Vendedor</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Solicitado</TableHead>
+                  <TableHead>Aprovado</TableHead>
+                  <TableHead>Cadastro</TableHead>
                   <TableHead className="text-right">
                     Ações
                   </TableHead>
@@ -565,109 +620,86 @@ export default async function PropostasPage({
               </TableHeader>
 
               <TableBody>
-                {propostas.map(
-                  (proposta) => {
-                    const status =
-                      obterStatus(
-                        proposta.status,
-                      );
+                {propostas.map((proposta) => {
+                  const status = obterStatus(proposta.status);
 
-                    return (
-                      <TableRow
-                        key={proposta.id}
-                      >
-                        <TableCell className="font-medium text-slate-900">
-                          #{proposta.id}
-                        </TableCell>
+                  return (
+                    <TableRow key={proposta.id}>
+                      <TableCell className="font-medium text-slate-900">
+                        #{proposta.id}
+                      </TableCell>
 
-                        <TableCell>
+                      <TableCell>
+                        <Link
+                          href={`/leads/${proposta.lead.id}`}
+                          className="font-medium text-slate-800 hover:text-blue-600"
+                        >
+                          {proposta.lead.nome}
+                        </Link>
+                      </TableCell>
+
+                      <TableCell>
+                        {proposta.banco?.nome ?? (
+                          <span className="text-slate-400">
+                            Não informado
+                          </span>
+                        )}
+                      </TableCell>
+
+                      <TableCell>
+                        {proposta.produto?.nome ?? (
+                          <span className="text-slate-400">
+                            Não informado
+                          </span>
+                        )}
+                      </TableCell>
+
+                      <TableCell>
+                        {proposta.vendedor?.nome ?? (
+                          <span className="text-slate-400">
+                            Não atribuído
+                          </span>
+                        )}
+                      </TableCell>
+
+                      <TableCell>
+                        <Badge variant={status.variante}>
+                          {status.texto}
+                        </Badge>
+                      </TableCell>
+
+                      <TableCell>
+                        {formatarMoeda(proposta.valorSolicitado)}
+                      </TableCell>
+
+                      <TableCell>
+                        {formatarMoeda(proposta.valorAprovado)}
+                      </TableCell>
+
+                      <TableCell>
+                        {formatarData(proposta.criadoEm)}
+                      </TableCell>
+
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
                           <Link
-                            href={`/leads/${proposta.lead.id}`}
-                            className="font-medium text-slate-800 hover:text-blue-600"
+                            href={`/propostas/${proposta.id}`}
+                            className="inline-flex h-8 items-center justify-center rounded-md border border-slate-300 bg-white px-3 text-xs font-medium text-slate-700 transition hover:bg-slate-50"
                           >
-                            {
-                              proposta
-                                .lead.nome
-                            }
+                            Abrir
                           </Link>
-                        </TableCell>
 
-                        <TableCell>
-                          {proposta.banco
-                            ?.nome ?? (
-                            <span className="text-slate-400">
-                              Não informado
-                            </span>
-                          )}
-                        </TableCell>
-
-                        <TableCell>
-                          {proposta.produto
-                            ?.nome ?? (
-                            <span className="text-slate-400">
-                              Não informado
-                            </span>
-                          )}
-                        </TableCell>
-
-                        <TableCell>
-                          {proposta.vendedor
-                            ?.nome ?? (
-                            <span className="text-slate-400">
-                              Não atribuído
-                            </span>
-                          )}
-                        </TableCell>
-
-                        <TableCell>
-                          <Badge
-                            variant={
-                              status.variante
-                            }
+                          <Link
+                            href={`/propostas/${proposta.id}/editar`}
+                            className="inline-flex h-8 items-center justify-center rounded-md bg-blue-600 px-3 text-xs font-medium text-white transition hover:bg-blue-700"
                           >
-                            {status.texto}
-                          </Badge>
-                        </TableCell>
-
-                        <TableCell>
-                          {formatarMoeda(
-                            proposta.valorSolicitado,
-                          )}
-                        </TableCell>
-
-                        <TableCell>
-                          {formatarMoeda(
-                            proposta.valorAprovado,
-                          )}
-                        </TableCell>
-
-                        <TableCell>
-                          {formatarData(
-                            proposta.criadoEm,
-                          )}
-                        </TableCell>
-
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            <Link
-                              href={`/propostas/${proposta.id}`}
-                              className="inline-flex h-8 items-center justify-center rounded-md border border-slate-300 bg-white px-3 text-xs font-medium text-slate-700 transition hover:bg-slate-50"
-                            >
-                              Abrir
-                            </Link>
-
-                            <Link
-                              href={`/propostas/${proposta.id}/editar`}
-                              className="inline-flex h-8 items-center justify-center rounded-md bg-blue-600 px-3 text-xs font-medium text-white transition hover:bg-blue-700"
-                            >
-                              Editar
-                            </Link>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  },
-                )}
+                            Editar
+                          </Link>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           )}
