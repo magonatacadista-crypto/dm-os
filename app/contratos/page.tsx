@@ -15,6 +15,25 @@ import {
 
 import { prisma } from "../lib/prisma";
 
+type Props = {
+  searchParams: Promise<{
+    busca?: string;
+    status?: string;
+    bancoId?: string;
+    vendedorId?: string;
+    dataInicial?: string;
+    dataFinal?: string;
+  }>;
+};
+
+type StatusFiltro =
+  | "RASCUNHO"
+  | "DIGITADO"
+  | "EM_ANALISE"
+  | "APROVADO"
+  | "PAGO"
+  | "CANCELADO";
+
 function formatarMoeda(valor: unknown) {
   const numero = Number(valor);
 
@@ -82,63 +101,305 @@ function obterStatus(status: string) {
   }
 }
 
-export default async function ContratosPage() {
-  const contratos = await prisma.contrato.findMany({
-    orderBy: {
-      criadoEm: "desc",
-    },
+function converterStatusFiltro(
+  valor: string | undefined,
+): StatusFiltro | undefined {
+  switch (valor) {
+    case "RASCUNHO":
+    case "DIGITADO":
+    case "EM_ANALISE":
+    case "APROVADO":
+    case "PAGO":
+    case "CANCELADO":
+      return valor;
 
-    include: {
-      lead: {
-        select: {
-          id: true,
-          nome: true,
-        },
-      },
+    default:
+      return undefined;
+  }
+}
 
-      proposta: {
-        select: {
-          id: true,
-        },
-      },
+function converterIdFiltro(
+  valor: string | undefined,
+) {
+  if (!valor) {
+    return undefined;
+  }
 
-      banco: {
-        select: {
-          nome: true,
-        },
-      },
+  const numero = Number(valor);
 
-      produto: {
-        select: {
-          nome: true,
-        },
-      },
+  if (
+    !Number.isInteger(numero) ||
+    numero <= 0
+  ) {
+    return undefined;
+  }
 
-      vendedor: {
-        select: {
-          nome: true,
-        },
-      },
-    },
-  });
+  return numero;
+}
 
-  const totalContratos = contratos.length;
+function converterDataInicial(
+  valor: string | undefined,
+) {
+  if (!valor) {
+    return undefined;
+  }
 
-  const emAnalise = contratos.filter(
-    (contrato) => contrato.status === "EM_ANALISE",
-  ).length;
-
-  const aprovados = contratos.filter(
-    (contrato) =>
-      contrato.status === "APROVADO" ||
-      contrato.status === "PAGO",
-  ).length;
-
-  const valorLiberadoTotal = contratos.reduce(
-    (total, contrato) =>
-      total + Number(contrato.valorLiberado ?? 0),
-    0,
+  const data = new Date(
+    `${valor}T00:00:00`,
   );
+
+  if (Number.isNaN(data.getTime())) {
+    return undefined;
+  }
+
+  return data;
+}
+
+function converterDataFinal(
+  valor: string | undefined,
+) {
+  if (!valor) {
+    return undefined;
+  }
+
+  const data = new Date(
+    `${valor}T23:59:59.999`,
+  );
+
+  if (Number.isNaN(data.getTime())) {
+    return undefined;
+  }
+
+  return data;
+}
+
+export default async function ContratosPage({
+  searchParams,
+}: Props) {
+  const parametros = await searchParams;
+
+  const busca = String(
+    parametros.busca ?? "",
+  ).trim();
+
+  const statusFiltro =
+    converterStatusFiltro(
+      parametros.status,
+    );
+
+  const bancoIdFiltro =
+    converterIdFiltro(
+      parametros.bancoId,
+    );
+
+  const vendedorIdFiltro =
+    converterIdFiltro(
+      parametros.vendedorId,
+    );
+
+  const dataInicialFiltro =
+    converterDataInicial(
+      parametros.dataInicial,
+    );
+
+  const dataFinalFiltro =
+    converterDataFinal(
+      parametros.dataFinal,
+    );
+
+  const numeroBusca = Number(busca);
+
+  const buscaNumerica =
+    Number.isInteger(numeroBusca) &&
+    numeroBusca > 0;
+
+  const [
+    contratos,
+    bancos,
+    vendedores,
+  ] = await Promise.all([
+    prisma.contrato.findMany({
+      where: {
+        ...(statusFiltro
+          ? {
+              status: statusFiltro,
+            }
+          : {}),
+
+        ...(bancoIdFiltro
+          ? {
+              bancoId: bancoIdFiltro,
+            }
+          : {}),
+
+        ...(vendedorIdFiltro
+          ? {
+              vendedorId:
+                vendedorIdFiltro,
+            }
+          : {}),
+
+        ...((dataInicialFiltro ||
+          dataFinalFiltro)
+          ? {
+              criadoEm: {
+                ...(dataInicialFiltro
+                  ? {
+                      gte:
+                        dataInicialFiltro,
+                    }
+                  : {}),
+
+                ...(dataFinalFiltro
+                  ? {
+                      lte:
+                        dataFinalFiltro,
+                    }
+                  : {}),
+              },
+            }
+          : {}),
+
+        ...(busca
+          ? {
+              OR: [
+                {
+                  numero: {
+                    contains: busca,
+                  },
+                },
+
+                {
+                  lead: {
+                    is: {
+                      nome: {
+                        contains: busca,
+                      },
+                    },
+                  },
+                },
+
+                {
+                  lead: {
+                    is: {
+                      cpf: {
+                        contains: busca,
+                      },
+                    },
+                  },
+                },
+
+                ...(buscaNumerica
+                  ? [
+                      {
+                        propostaId:
+                          numeroBusca,
+                      },
+                    ]
+                  : []),
+              ],
+            }
+          : {}),
+      },
+
+      orderBy: {
+        criadoEm: "desc",
+      },
+
+      include: {
+        lead: {
+          select: {
+            id: true,
+            nome: true,
+          },
+        },
+
+        proposta: {
+          select: {
+            id: true,
+          },
+        },
+
+        banco: {
+          select: {
+            nome: true,
+          },
+        },
+
+        produto: {
+          select: {
+            nome: true,
+          },
+        },
+
+        vendedor: {
+          select: {
+            nome: true,
+          },
+        },
+      },
+    }),
+
+    prisma.banco.findMany({
+      orderBy: {
+        nome: "asc",
+      },
+
+      select: {
+        id: true,
+        nome: true,
+        ativo: true,
+      },
+    }),
+
+    prisma.vendedor.findMany({
+      orderBy: {
+        nome: "asc",
+      },
+
+      select: {
+        id: true,
+        nome: true,
+        situacao: true,
+      },
+    }),
+  ]);
+
+  const totalContratos =
+    contratos.length;
+
+  const emAnalise =
+    contratos.filter(
+      (contrato) =>
+        contrato.status ===
+        "EM_ANALISE",
+    ).length;
+
+  const aprovados =
+    contratos.filter(
+      (contrato) =>
+        contrato.status ===
+          "APROVADO" ||
+        contrato.status === "PAGO",
+    ).length;
+
+  const valorLiberadoTotal =
+    contratos.reduce(
+      (total, contrato) =>
+        total +
+        Number(
+          contrato.valorLiberado ?? 0,
+        ),
+      0,
+    );
+
+  const filtrosAtivos =
+    Boolean(busca) ||
+    Boolean(statusFiltro) ||
+    Boolean(bancoIdFiltro) ||
+    Boolean(vendedorIdFiltro) ||
+    Boolean(dataInicialFiltro) ||
+    Boolean(dataFinalFiltro);
 
   return (
     <div className="flex">
@@ -161,7 +422,11 @@ export default async function ContratosPage() {
                 {totalContratos}
               </strong>
 
-              <Badge variant="info">Carteira</Badge>
+              <Badge variant="info">
+                {filtrosAtivos
+                  ? "Filtrados"
+                  : "Carteira"}
+              </Badge>
             </div>
           </Card>
 
@@ -175,7 +440,9 @@ export default async function ContratosPage() {
                 {emAnalise}
               </strong>
 
-              <Badge variant="warning">Aguardando</Badge>
+              <Badge variant="warning">
+                Aguardando
+              </Badge>
             </div>
           </Card>
 
@@ -189,7 +456,9 @@ export default async function ContratosPage() {
                 {aprovados}
               </strong>
 
-              <Badge variant="success">Convertidos</Badge>
+              <Badge variant="success">
+                Convertidos
+              </Badge>
             </div>
           </Card>
 
@@ -200,43 +469,313 @@ export default async function ContratosPage() {
 
             <div className="mt-2 flex items-center justify-between gap-2">
               <strong className="text-xl text-slate-900">
-                {formatarMoeda(valorLiberadoTotal)}
+                {formatarMoeda(
+                  valorLiberadoTotal,
+                )}
               </strong>
 
-              <Badge>Produção</Badge>
+              <Badge>
+                Produção
+              </Badge>
             </div>
           </Card>
         </div>
 
         <Card>
           <div className="mb-3">
-            <h2 className="text-base font-semibold text-slate-900">
-              Lista de contratos
+            <h2 className="text-sm font-semibold text-slate-900">
+              Filtros
             </h2>
 
             <p className="text-xs text-slate-500">
-              Contratos ordenados do mais recente para o mais antigo.
+              Refine a visualização dos contratos.
             </p>
+          </div>
+
+          <form
+            method="GET"
+            className="grid items-end gap-3 md:grid-cols-2 xl:grid-cols-6"
+          >
+            <div className="md:col-span-2 xl:col-span-6">
+              <label
+                htmlFor="busca"
+                className="mb-1.5 block text-xs font-medium text-slate-600"
+              >
+                Buscar
+              </label>
+
+              <input
+                id="busca"
+                name="busca"
+                type="text"
+                defaultValue={busca}
+                placeholder="Contrato, cliente, CPF ou nº da proposta"
+                className="h-9 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              />
+            </div>
+
+            <div>
+              <label
+                htmlFor="status"
+                className="mb-1.5 block text-xs font-medium text-slate-600"
+              >
+                Status
+              </label>
+
+              <select
+                id="status"
+                name="status"
+                defaultValue={
+                  statusFiltro ?? ""
+                }
+                className="h-9 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              >
+                <option value="">
+                  Todos os status
+                </option>
+
+                <option value="RASCUNHO">
+                  Rascunho
+                </option>
+
+                <option value="DIGITADO">
+                  Digitado
+                </option>
+
+                <option value="EM_ANALISE">
+                  Em análise
+                </option>
+
+                <option value="APROVADO">
+                  Aprovado
+                </option>
+
+                <option value="PAGO">
+                  Pago
+                </option>
+
+                <option value="CANCELADO">
+                  Cancelado
+                </option>
+              </select>
+            </div>
+
+            <div>
+              <label
+                htmlFor="bancoId"
+                className="mb-1.5 block text-xs font-medium text-slate-600"
+              >
+                Banco
+              </label>
+
+              <select
+                id="bancoId"
+                name="bancoId"
+                defaultValue={
+                  bancoIdFiltro
+                    ? String(
+                        bancoIdFiltro,
+                      )
+                    : ""
+                }
+                className="h-9 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              >
+                <option value="">
+                  Todos os bancos
+                </option>
+
+                {bancos.map(
+                  (banco) => (
+                    <option
+                      key={banco.id}
+                      value={banco.id}
+                    >
+                      {banco.nome}
+                      {!banco.ativo
+                        ? " — Inativo"
+                        : ""}
+                    </option>
+                  ),
+                )}
+              </select>
+            </div>
+
+            <div>
+              <label
+                htmlFor="vendedorId"
+                className="mb-1.5 block text-xs font-medium text-slate-600"
+              >
+                Vendedor
+              </label>
+
+              <select
+                id="vendedorId"
+                name="vendedorId"
+                defaultValue={
+                  vendedorIdFiltro
+                    ? String(
+                        vendedorIdFiltro,
+                      )
+                    : ""
+                }
+                className="h-9 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              >
+                <option value="">
+                  Todos os vendedores
+                </option>
+
+                {vendedores.map(
+                  (vendedor) => (
+                    <option
+                      key={
+                        vendedor.id
+                      }
+                      value={
+                        vendedor.id
+                      }
+                    >
+                      {
+                        vendedor.nome
+                      }
+                      {vendedor.situacao !==
+                      "ATIVO"
+                        ? " — Inativo"
+                        : ""}
+                    </option>
+                  ),
+                )}
+              </select>
+            </div>
+
+            <div>
+              <label
+                htmlFor="dataInicial"
+                className="mb-1.5 block text-xs font-medium text-slate-600"
+              >
+                Data inicial
+              </label>
+
+              <input
+                id="dataInicial"
+                name="dataInicial"
+                type="date"
+                defaultValue={
+                  parametros.dataInicial ??
+                  ""
+                }
+                className="h-9 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              />
+            </div>
+
+            <div>
+              <label
+                htmlFor="dataFinal"
+                className="mb-1.5 block text-xs font-medium text-slate-600"
+              >
+                Data final
+              </label>
+
+              <input
+                id="dataFinal"
+                name="dataFinal"
+                type="date"
+                defaultValue={
+                  parametros.dataFinal ??
+                  ""
+                }
+                className="h-9 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              />
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                type="submit"
+                className="inline-flex h-9 items-center justify-center rounded-md bg-blue-600 px-4 text-sm font-medium text-white transition hover:bg-blue-700"
+              >
+                Filtrar
+              </button>
+
+              {filtrosAtivos && (
+                <Link
+                  href="/contratos"
+                  className="inline-flex h-9 items-center justify-center rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                >
+                  Limpar
+                </Link>
+              )}
+            </div>
+          </form>
+        </Card>
+
+        <Card>
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h2 className="text-base font-semibold text-slate-900">
+                Lista de contratos
+              </h2>
+
+              <p className="text-xs text-slate-500">
+                {filtrosAtivos
+                  ? `${totalContratos} contrato(s) encontrado(s) com os filtros aplicados.`
+                  : "Contratos ordenados do mais recente para o mais antigo."}
+              </p>
+            </div>
+
+            {filtrosAtivos && (
+              <Badge variant="info">
+                Filtros ativos
+              </Badge>
+            )}
           </div>
 
           {contratos.length === 0 ? (
             <div className="rounded-md border border-dashed border-slate-300 py-10 text-center text-sm text-slate-500">
-              Nenhum contrato cadastrado.
+              Nenhum contrato encontrado.
             </div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Contrato</TableHead>
-                  <TableHead>Cliente</TableHead>
-                  <TableHead>Proposta</TableHead>
-                  <TableHead>Banco</TableHead>
-                  <TableHead>Produto</TableHead>
-                  <TableHead>Vendedor</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Contratado</TableHead>
-                  <TableHead>Liberado</TableHead>
-                  <TableHead>Pagamento</TableHead>
+                  <TableHead>
+                    Contrato
+                  </TableHead>
+
+                  <TableHead>
+                    Cliente
+                  </TableHead>
+
+                  <TableHead>
+                    Proposta
+                  </TableHead>
+
+                  <TableHead>
+                    Banco
+                  </TableHead>
+
+                  <TableHead>
+                    Produto
+                  </TableHead>
+
+                  <TableHead>
+                    Vendedor
+                  </TableHead>
+
+                  <TableHead>
+                    Status
+                  </TableHead>
+
+                  <TableHead>
+                    Contratado
+                  </TableHead>
+
+                  <TableHead>
+                    Liberado
+                  </TableHead>
+
+                  <TableHead>
+                    Pagamento
+                  </TableHead>
+
                   <TableHead className="text-right">
                     Ações
                   </TableHead>
@@ -244,74 +783,122 @@ export default async function ContratosPage() {
               </TableHeader>
 
               <TableBody>
-                {contratos.map((contrato) => {
-                  const status = obterStatus(contrato.status);
+                {contratos.map(
+                  (contrato) => {
+                    const status =
+                      obterStatus(
+                        contrato.status,
+                      );
 
-                  return (
-                    <TableRow key={contrato.id}>
-                      <TableCell className="font-medium text-slate-900">
-                        {contrato.numero ?? `#${contrato.id}`}
-                      </TableCell>
+                    return (
+                      <TableRow
+                        key={
+                          contrato.id
+                        }
+                      >
+                        <TableCell className="font-medium text-slate-900">
+                          {contrato.numero ??
+                            `#${contrato.id}`}
+                        </TableCell>
 
-                      <TableCell>
-                        <Link
-                          href={`/leads/${contrato.lead.id}`}
-                          className="font-medium text-slate-800 hover:text-blue-600"
-                        >
-                          {contrato.lead.nome}
-                        </Link>
-                      </TableCell>
+                        <TableCell>
+                          <Link
+                            href={`/leads/${contrato.lead.id}`}
+                            className="font-medium text-slate-800 hover:text-blue-600"
+                          >
+                            {
+                              contrato
+                                .lead.nome
+                            }
+                          </Link>
+                        </TableCell>
 
-                      <TableCell>
-                        <Link
-                          href={`/propostas/${contrato.proposta.id}`}
-                          className="text-slate-700 hover:text-blue-600"
-                        >
-                          #{contrato.proposta.id}
-                        </Link>
-                      </TableCell>
+                        <TableCell>
+                          <Link
+                            href={`/propostas/${contrato.proposta.id}`}
+                            className="text-slate-700 hover:text-blue-600"
+                          >
+                            #
+                            {
+                              contrato
+                                .proposta
+                                .id
+                            }
+                          </Link>
+                        </TableCell>
 
-                      <TableCell>
-                        {contrato.banco?.nome ?? "Não informado"}
-                      </TableCell>
+                        <TableCell>
+                          {contrato
+                            .banco
+                            ?.nome ??
+                            "Não informado"}
+                        </TableCell>
 
-                      <TableCell>
-                        {contrato.produto?.nome ?? "Não informado"}
-                      </TableCell>
+                        <TableCell>
+                          {contrato
+                            .produto
+                            ?.nome ??
+                            "Não informado"}
+                        </TableCell>
 
-                      <TableCell>
-                        {contrato.vendedor?.nome ?? "Não atribuído"}
-                      </TableCell>
+                        <TableCell>
+                          {contrato
+                            .vendedor
+                            ?.nome ??
+                            "Não atribuído"}
+                        </TableCell>
 
-                      <TableCell>
-                        <Badge variant={status.variante}>
-                          {status.texto}
-                        </Badge>
-                      </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={
+                              status.variante
+                            }
+                          >
+                            {
+                              status.texto
+                            }
+                          </Badge>
+                        </TableCell>
 
-                      <TableCell>
-                        {formatarMoeda(contrato.valorContratado)}
-                      </TableCell>
+                        <TableCell>
+                          {formatarMoeda(
+                            contrato.valorContratado,
+                          )}
+                        </TableCell>
 
-                      <TableCell>
-                        {formatarMoeda(contrato.valorLiberado)}
-                      </TableCell>
+                        <TableCell>
+                          {formatarMoeda(
+                            contrato.valorLiberado,
+                          )}
+                        </TableCell>
 
-                      <TableCell>
-                        {formatarData(contrato.dataPagamento)}
-                      </TableCell>
+                        <TableCell>
+                          {formatarData(
+                            contrato.dataPagamento,
+                          )}
+                        </TableCell>
 
-                      <TableCell className="text-right">
-                        <Link
-                          href={`/contratos/${contrato.id}`}
-                          className="inline-flex h-8 items-center justify-center rounded-md border border-slate-300 bg-white px-3 text-xs font-medium text-slate-700 transition hover:bg-slate-50"
-                        >
-                          Abrir
-                        </Link>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Link
+                              href={`/contratos/${contrato.id}`}
+                              className="inline-flex h-8 items-center justify-center rounded-md border border-slate-300 bg-white px-3 text-xs font-medium text-slate-700 transition hover:bg-slate-50"
+                            >
+                              Abrir
+                            </Link>
+
+                            <Link
+                              href={`/contratos/${contrato.id}/editar`}
+                              className="inline-flex h-8 items-center justify-center rounded-md bg-blue-600 px-3 text-xs font-medium text-white transition hover:bg-blue-700"
+                            >
+                              Editar
+                            </Link>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  },
+                )}
               </TableBody>
             </Table>
           )}
