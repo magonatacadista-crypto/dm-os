@@ -747,6 +747,11 @@ export default async function LeadPage({
               Voltar
             </Button>
           </Link>
+          <Link href="/agenda">
+  <Button variant="secondary">
+    Voltar para Agenda
+  </Button>
+</Link>
         </div>
       </main>
     </div>

@@ -300,128 +300,129 @@ const [contratos, bancosFiltro, vendedoresFiltro] =
     </p>
   </div>
 
-  <form
-    method="GET"
-    className="grid items-end gap-3 md:grid-cols-3"
-  >
-    <div>
-      <label
-        htmlFor="dataInicial"
-        className="mb-1.5 block text-xs font-medium text-slate-600"
-      >
-        Data inicial
-      </label>
+<form
+  method="GET"
+  className="grid items-end gap-3 md:grid-cols-2 xl:grid-cols-5"
+>
+  <div>
+    <label
+      htmlFor="dataInicial"
+      className="mb-1.5 block text-xs font-medium text-slate-600"
+    >
+      Data inicial
+    </label>
 
-      <input
-        id="dataInicial"
-        name="dataInicial"
-        type="date"
-        defaultValue={
-          parametros.dataInicial ?? ""
-        }
-        className="h-9 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-      />
-    </div>
+    <input
+      id="dataInicial"
+      name="dataInicial"
+      type="date"
+      defaultValue={
+        parametros.dataInicial ?? ""
+      }
+      className="h-9 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+    />
+  </div>
 
-    <div>
-      <label
-        htmlFor="dataFinal"
-        className="mb-1.5 block text-xs font-medium text-slate-600"
-      >
-        Data final
-      </label>
+  <div>
+    <label
+      htmlFor="dataFinal"
+      className="mb-1.5 block text-xs font-medium text-slate-600"
+    >
+      Data final
+    </label>
 
-      <input
-        id="dataFinal"
-        name="dataFinal"
-        type="date"
-        defaultValue={
-          parametros.dataFinal ?? ""
-        }
-        className="h-9 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-      />
-    </div>
+    <input
+      id="dataFinal"
+      name="dataFinal"
+      type="date"
+      defaultValue={
+        parametros.dataFinal ?? ""
+      }
+      className="h-9 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+    />
+  </div>
 
-    <div className="flex gap-2">
-        <div>
-  <label
-    htmlFor="bancoId"
-    className="mb-1.5 block text-xs font-medium text-slate-600"
-  >
-    Banco
-  </label>
+  <div>
+    <label
+      htmlFor="bancoId"
+      className="mb-1.5 block text-xs font-medium text-slate-600"
+    >
+      Banco
+    </label>
 
-  <select
-    id="bancoId"
-    name="bancoId"
-    defaultValue={
-      bancoIdValido
-        ? String(bancoIdFiltro)
-        : ""
-    }
-    className="h-9 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-  >
-    <option value="">
-      Todos os bancos
-    </option>
-
-    {bancosFiltro.map((banco) => (
-      <option
-        key={banco.id}
-        value={banco.id}
-      >
-        {banco.nome}
-        {!banco.ativo
-          ? " — Inativo"
-          : ""}
+    <select
+      id="bancoId"
+      name="bancoId"
+      defaultValue={
+        bancoIdValido
+          ? String(bancoIdFiltro)
+          : ""
+      }
+      className="h-9 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+    >
+      <option value="">
+        Todos os bancos
       </option>
-    ))}
-  </select>
-</div>
-className="grid items-end gap-3 md:grid-cols-2 xl:grid-cols-5"
-      <button
-        type="submit"
-        className="inline-flex h-9 items-center justify-center rounded-md bg-blue-600 px-4 text-sm font-medium text-white transition hover:bg-blue-700"
-      >
-        <div>
-  <label
-    htmlFor="vendedorId"
-    className="mb-1.5 block text-xs font-medium text-slate-600"
-  >
-    Vendedor
-  </label>
 
-  <select
-    id="vendedorId"
-    name="vendedorId"
-    defaultValue={
-      vendedorIdValido
-        ? String(vendedorIdFiltro)
-        : ""
-    }
-    className="h-9 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-  >
-    <option value="">
-      Todos os vendedores
-    </option>
+      {bancosFiltro.map((banco) => (
+        <option
+          key={banco.id}
+          value={banco.id}
+        >
+          {banco.nome}
+          {!banco.ativo
+            ? " — Inativo"
+            : ""}
+        </option>
+      ))}
+    </select>
+  </div>
 
-    {vendedoresFiltro.map((vendedor) => (
-      <option
-        key={vendedor.id}
-        value={vendedor.id}
-      >
-        {vendedor.nome}
-        {vendedor.situacao !== "ATIVO"
-          ? " — Inativo"
-          : ""}
+  <div>
+    <label
+      htmlFor="vendedorId"
+      className="mb-1.5 block text-xs font-medium text-slate-600"
+    >
+      Vendedor
+    </label>
+
+    <select
+      id="vendedorId"
+      name="vendedorId"
+      defaultValue={
+        vendedorIdValido
+          ? String(vendedorIdFiltro)
+          : ""
+      }
+      className="h-9 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+    >
+      <option value="">
+        Todos os vendedores
       </option>
-    ))}
-  </select>
-</div>
-        Filtrar
-      </button>
-    </div>
-  </form>
+
+      {vendedoresFiltro.map((vendedor) => (
+        <option
+          key={vendedor.id}
+          value={vendedor.id}
+        >
+          {vendedor.nome}
+          {vendedor.situacao !== "ATIVO"
+            ? " — Inativo"
+            : ""}
+        </option>
+      ))}
+    </select>
+  </div>
+
+  <div>
+    <button
+      type="submit"
+      className="inline-flex h-9 items-center justify-center rounded-md bg-blue-600 px-4 text-sm font-medium text-white transition hover:bg-blue-700"
+    >
+      Filtrar
+    </button>
+  </div>
+</form>
 </Card>
 
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
