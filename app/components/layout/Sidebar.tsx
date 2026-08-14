@@ -2,12 +2,16 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import {
+  useEffect,
+  useState,
+} from "react";
 
 import {
   BarChart3,
   BriefcaseBusiness,
   CalendarDays,
+  ChevronDown,
   CircleDollarSign,
   ClipboardList,
   FileText,
@@ -75,18 +79,18 @@ const secoes = [
     ],
   },
   {
-  titulo: "Operações",
-  itens: [
-    {
-      nome: "Propostas",
-      href: "/propostas",
-      icone: ClipboardList,
-    },
-    {
-      nome: "Contratos",
-      href: "/contratos",
-      icone: FileText,
-    },
+    titulo: "Operações",
+    itens: [
+      {
+        nome: "Propostas",
+        href: "/propostas",
+        icone: ClipboardList,
+      },
+      {
+        nome: "Contratos",
+        href: "/contratos",
+        icone: FileText,
+      },
       {
         nome: "Pendências",
         href: "/pendencias",
@@ -117,6 +121,11 @@ const secoes = [
         href: "/producao",
         icone: BarChart3,
       },
+      {
+        nome: "Metas",
+        href: "/metas",
+        icone: Target,
+      },
     ],
   },
   {
@@ -144,7 +153,13 @@ const secoes = [
 export default function Sidebar() {
   const pathname = usePathname();
 
-  const [fixada, setFixada] = useState(false);
+  const [fixada, setFixada] =
+    useState(false);
+
+  const [secoesAbertas, setSecoesAbertas] =
+    useState<Record<string, boolean>>({
+      Principal: true,
+    });
 
   function itemAtivo(href: string) {
     if (href === "/") {
@@ -154,6 +169,48 @@ export default function Sidebar() {
     return (
       pathname === href ||
       pathname.startsWith(`${href}/`)
+    );
+  }
+
+  function secaoAtiva(
+    itens: (typeof secoes)[number]["itens"],
+  ) {
+    return itens.some((item) =>
+      itemAtivo(item.href),
+    );
+  }
+
+  useEffect(() => {
+    const secaoAtual =
+      secoes.find((secao) =>
+        secaoAtiva(secao.itens),
+      );
+
+    if (!secaoAtual) {
+      return;
+    }
+
+    setSecoesAbertas(
+      (estadoAtual) => ({
+        ...estadoAtual,
+        [secaoAtual.titulo]: true,
+      }),
+    );
+  }, [pathname]);
+
+  function alternarSecao(
+    titulo: string,
+  ) {
+    if (titulo === "Principal") {
+      return;
+    }
+
+    setSecoesAbertas(
+      (estadoAtual) => ({
+        ...estadoAtual,
+        [titulo]:
+          !estadoAtual[titulo],
+      }),
     );
   }
 
@@ -216,7 +273,8 @@ export default function Sidebar() {
               type="button"
               onClick={() =>
                 setFixada(
-                  (valorAtual) => !valorAtual,
+                  (valorAtual) =>
+                    !valorAtual,
                 )
               }
               title={
@@ -260,93 +318,198 @@ export default function Sidebar() {
         </div>
 
         <nav className="flex-1">
-          <div className="space-y-5">
-            {secoes.map((secao) => (
-              <section key={secao.titulo}>
-                <div className="mb-2 h-5 overflow-hidden">
-                  <h2
-                    className={`
-                      whitespace-nowrap
-                      px-3
-                      text-[10px]
-                      font-semibold
-                      uppercase
-                      tracking-wider
-                      text-slate-500
-                      transition-opacity
-                      duration-200
-                      ${
-                        mostrarTextos
-                          ? "opacity-100"
-                          : "opacity-0 group-hover:opacity-100"
+          <div className="space-y-2">
+            {secoes.map((secao) => {
+              const estaAtiva =
+                secaoAtiva(secao.itens);
+
+              const estaAberta =
+                secao.titulo ===
+                  "Principal" ||
+                Boolean(
+                  secoesAbertas[
+                    secao.titulo
+                  ],
+                );
+
+              return (
+                <section
+                  key={secao.titulo}
+                >
+                  {secao.titulo !==
+                  "Principal" ? (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        alternarSecao(
+                          secao.titulo,
+                        )
                       }
-                    `}
-                  >
-                    {secao.titulo}
-                  </h2>
-                </div>
+                      title={secao.titulo}
+                      className={`
+                        flex
+                        h-9
+                        w-full
+                        items-center
+                        rounded-lg
+                        px-3
+                        text-left
+                        transition
+                        ${
+                          estaAtiva
+                            ? "text-blue-300"
+                            : "text-slate-500 hover:bg-slate-800 hover:text-slate-300"
+                        }
+                      `}
+                    >
+                      <span
+                        className={`
+                          flex-1
+                          whitespace-nowrap
+                          text-[10px]
+                          font-semibold
+                          uppercase
+                          tracking-wider
+                          transition-opacity
+                          duration-200
+                          ${
+                            mostrarTextos
+                              ? "opacity-100"
+                              : "opacity-0 group-hover:opacity-100"
+                          }
+                        `}
+                      >
+                        {secao.titulo}
+                      </span>
 
-                <ul className="space-y-1">
-                  {secao.itens.map((item) => {
-                    const ativo =
-                      itemAtivo(item.href);
+                      <ChevronDown
+                        size={15}
+                        className={`
+                          shrink-0
+                          transition-all
+                          duration-200
+                          ${
+                            estaAberta
+                              ? "rotate-180"
+                              : "rotate-0"
+                          }
+                          ${
+                            mostrarTextos
+                              ? "opacity-100"
+                              : "opacity-0 group-hover:opacity-100"
+                          }
+                        `}
+                        aria-hidden="true"
+                      />
+                    </button>
+                  ) : (
+                    <div className="mb-1 h-5 overflow-hidden">
+                      <h2
+                        className={`
+                          whitespace-nowrap
+                          px-3
+                          text-[10px]
+                          font-semibold
+                          uppercase
+                          tracking-wider
+                          text-slate-500
+                          transition-opacity
+                          duration-200
+                          ${
+                            mostrarTextos
+                              ? "opacity-100"
+                              : "opacity-0 group-hover:opacity-100"
+                          }
+                        `}
+                      >
+                        {secao.titulo}
+                      </h2>
+                    </div>
+                  )}
 
-                    const Icone = item.icone;
+                  {estaAberta && (
+                    <ul className="mt-1 space-y-1">
+                      {secao.itens.map(
+                        (item) => {
+                          const ativo =
+                            itemAtivo(
+                              item.href,
+                            );
 
-                    return (
-                      <li key={item.href}>
-                        <Link
-                          href={item.href}
-                          title={item.nome}
-                          className={`
-                            relative
-                            flex
-                            h-11
-                            items-center
-                            rounded-lg
-                            transition
-                            ${
-                              ativo
-                                ? "bg-blue-600 text-white"
-                                : "text-slate-300 hover:bg-slate-800 hover:text-white"
-                            }
-                          `}
-                        >
-                          {ativo && (
-                            <span className="absolute left-0 h-6 w-1 rounded-r bg-white" />
-                          )}
+                          const Icone =
+                            item.icone;
 
-                          <span className="flex w-14 shrink-0 items-center justify-center">
-                            <Icone
-                              size={20}
-                              strokeWidth={1.8}
-                              aria-hidden="true"
-                            />
-                          </span>
-
-                          <span
-                            className={`
-                              whitespace-nowrap
-                              text-sm
-                              font-medium
-                              transition-opacity
-                              duration-200
-                              ${
-                                mostrarTextos
-                                  ? "opacity-100"
-                                  : "opacity-0 group-hover:opacity-100"
+                          return (
+                            <li
+                              key={
+                                item.href
                               }
-                            `}
-                          >
-                            {item.nome}
-                          </span>
-                        </Link>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </section>
-            ))}
+                            >
+                              <Link
+                                href={
+                                  item.href
+                                }
+                                title={
+                                  item.nome
+                                }
+                                className={`
+                                  relative
+                                  flex
+                                  h-11
+                                  items-center
+                                  rounded-lg
+                                  transition
+                                  ${
+                                    ativo
+                                      ? "bg-blue-600 text-white"
+                                      : "text-slate-300 hover:bg-slate-800 hover:text-white"
+                                  }
+                                `}
+                              >
+                                {ativo && (
+                                  <span className="absolute left-0 h-6 w-1 rounded-r bg-white" />
+                                )}
+
+                                <span className="flex w-14 shrink-0 items-center justify-center">
+                                  <Icone
+                                    size={
+                                      20
+                                    }
+                                    strokeWidth={
+                                      1.8
+                                    }
+                                    aria-hidden="true"
+                                  />
+                                </span>
+
+                                <span
+                                  className={`
+                                    whitespace-nowrap
+                                    text-sm
+                                    font-medium
+                                    transition-opacity
+                                    duration-200
+                                    ${
+                                      mostrarTextos
+                                        ? "opacity-100"
+                                        : "opacity-0 group-hover:opacity-100"
+                                    }
+                                  `}
+                                >
+                                  {
+                                    item.nome
+                                  }
+                                </span>
+                              </Link>
+                            </li>
+                          );
+                        },
+                      )}
+                    </ul>
+                  )}
+                </section>
+              );
+            })}
           </div>
         </nav>
 

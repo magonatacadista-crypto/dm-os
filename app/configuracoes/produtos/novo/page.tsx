@@ -94,8 +94,30 @@ export default function NovoProdutoPage() {
 
               <label
                 htmlFor="ativo"
-                className="text-sm text-slate-700"
-              >
+                className="text-sm text-slate-700"                
+              ><div>
+  <label
+    htmlFor="comissaoPercentual"
+    className="mb-2 block text-sm font-medium text-slate-700"
+  >
+    Comissão (%)
+  </label>
+
+  <input
+    id="comissaoPercentual"
+    name="comissaoPercentual"
+    type="text"
+    inputMode="decimal"
+    placeholder="Ex.: 2,50"
+    defaultValue="0"
+    disabled={enviando}
+    className="w-full rounded-lg border border-slate-300 px-4 py-3 outline-none transition focus:border-blue-600 disabled:cursor-not-allowed disabled:bg-slate-100"
+  />
+
+  <p className="mt-1 text-xs text-slate-500">
+    Percentual aplicado sobre o valor liberado do contrato.
+  </p>
+</div>
                 Produto ativo
               </label>
             </div>

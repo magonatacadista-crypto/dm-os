@@ -98,10 +98,11 @@ export default async function ProdutosPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Nome</TableHead>
-                  <TableHead>Código</TableHead>
-                  <TableHead>Situação</TableHead>
-                  <TableHead>Cadastro</TableHead>
-                  <TableHead>Ações</TableHead>
+<TableHead>Código</TableHead>
+<TableHead>Comissão</TableHead>
+<TableHead>Situação</TableHead>
+<TableHead>Cadastro</TableHead>
+<TableHead>Ações</TableHead>
                 </TableRow>
               </TableHeader>
 
@@ -115,6 +116,15 @@ export default async function ProdutosPage() {
                     <TableCell>
                       {produto.codigo || "-"}
                     </TableCell>
+                    <TableCell>
+  {Number(
+    produto.comissaoPercentual ?? 0,
+  ).toLocaleString("pt-BR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}
+  %
+</TableCell>
 
                     <TableCell>
                       <Badge

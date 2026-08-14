@@ -94,9 +94,10 @@ model Vendedor {
   criadoEm       DateTime  @default(now())
   atualizadoEm   DateTime  @updatedAt
 
-  leads     Lead[]
-  propostas Proposta[]
-  contratos Contrato[]
+  leads        Lead[]
+  propostas    Proposta[]
+  contratos    Contrato[]
+  metasMensais MetaMensalVendedor[]
 }
 
 model Banco {
@@ -132,6 +133,8 @@ model Produto {
   nome   String  @unique
   codigo String?
   ativo  Boolean @default(true)
+
+  comissaoPercentual Decimal @default(0)
 
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
@@ -277,4 +280,22 @@ model Contrato {
 
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
+}
+
+model MetaMensalVendedor {
+  id Int @id @default(autoincrement())
+
+  ano Int
+  mes Int
+
+  metaValor     Decimal @default(0)
+  metaContratos Int     @default(0)
+
+  vendedorId Int
+  vendedor   Vendedor @relation(fields: [vendedorId], references: [id], onDelete: Cascade)
+
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  @@unique([vendedorId, ano, mes])
 }

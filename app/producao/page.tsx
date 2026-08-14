@@ -95,8 +95,12 @@ const vendedorIdValido =
   Number.isInteger(vendedorIdFiltro) &&
   vendedorIdFiltro > 0;
 
-const [contratos, bancosFiltro, vendedoresFiltro] =
-  await Promise.all([
+const [
+  contratos,
+  bancosFiltro,
+  vendedoresFiltro,
+  metasMensais,  
+] = await Promise.all([
     prisma.contrato.findMany({
       where: {
         status: {
@@ -155,17 +159,18 @@ const [contratos, bancosFiltro, vendedoresFiltro] =
     }),
 
     prisma.banco.findMany({
-      orderBy: {
-        nome: "asc",
-      },
+  orderBy: {
+    nome: "asc",
+  },
 
-      select: {
-        id: true,
-        nome: true,
-        ativo: true,
-      },
-    }),
-    prisma.vendedor.findMany({
+  select: {
+    id: true,
+    nome: true,
+    ativo: true,
+  },
+}),
+
+prisma.vendedor.findMany({
   orderBy: {
     nome: "asc",
   },
@@ -176,9 +181,84 @@ const [contratos, bancosFiltro, vendedoresFiltro] =
     situacao: true,
   },
 }),
-  ]);
+
+prisma.metaMensalVendedor.findMany({
+  orderBy: [
+    {
+      ano: "desc",
+    },
+    {
+      mes: "desc",
+    },
+  ],
+
+  include: {
+    vendedor: {
+      select: {
+        id: true,
+        nome: true,
+      },
+    },
+  },
+}),
+]);
 
   const totalContratos = contratos.length;
+  const agora = new Date();
+
+const inicioPeriodo =
+  dataInicialFiltro ?? agora;
+
+const fimPeriodo =
+  dataFinalFiltro ?? inicioPeriodo;
+
+function competenciaDentroDoPeriodo(
+  ano: number,
+  mes: number,
+) {
+  const inicioCompetencia =
+    new Date(ano, mes - 1, 1);
+
+  const fimCompetencia =
+    new Date(
+      ano,
+      mes,
+      0,
+      23,
+      59,
+      59,
+      999,
+    );
+
+  return (
+    inicioCompetencia <= fimPeriodo &&
+    fimCompetencia >= inicioPeriodo
+  );
+}
+
+const metasPeriodo =
+  metasMensais.filter(
+    (meta) =>
+      competenciaDentroDoPeriodo(
+        meta.ano,
+        meta.mes,
+      ) &&
+      (!vendedorIdValido ||
+        meta.vendedorId ===
+          vendedorIdFiltro),
+  );
+
+const metaValorTotal = metasPeriodo.reduce(
+  (total, meta) =>
+    total + Number(meta.metaValor),
+  0,
+);
+
+const metaContratosTotal = metasPeriodo.reduce(
+  (total, meta) =>
+    total + meta.metaContratos,
+  0,
+);
 
   const contratosPagos = contratos.filter(
     (contrato) => contrato.status === "PAGO",
@@ -195,6 +275,31 @@ const [contratos, bancosFiltro, vendedoresFiltro] =
       total + Number(contrato.valorLiberado ?? 0),
     0,
   );
+  const percentualMetaValor =
+  metaValorTotal > 0
+    ? Math.min(
+        (valorLiberadoTotal / metaValorTotal) * 100,
+        100,
+      )
+    : 0;
+
+const percentualMetaContratos =
+  metaContratosTotal > 0
+    ? Math.min(
+        (totalContratos / metaContratosTotal) * 100,
+        100,
+      )
+    : 0;
+
+const faltaMetaValor = Math.max(
+  metaValorTotal - valorLiberadoTotal,
+  0,
+);
+
+const faltaMetaContratos = Math.max(
+  metaContratosTotal - totalContratos,
+  0,
+);
 
   const producaoPorVendedor = new Map<
     string,
@@ -425,7 +530,7 @@ const [contratos, bancosFiltro, vendedoresFiltro] =
 </form>
 </Card>
 
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-6">
           <Card>
             <p className="text-xs font-medium text-slate-500">
               Contratos
@@ -476,6 +581,45 @@ const [contratos, bancosFiltro, vendedoresFiltro] =
             <p className="text-xs font-medium text-slate-500">
               Valor liberado
             </p>
+            <Card>
+  <p className="text-xs font-medium text-slate-500">
+    Meta em valor
+  </p>
+
+  <div className="mt-2">
+    <strong className="text-xl text-slate-900">
+      {formatarMoeda(metaValorTotal)}
+    </strong>
+
+    <p className="mt-1 text-xs text-slate-500">
+      {percentualMetaValor.toFixed(1)}% atingido
+    </p>
+
+    <p className="mt-1 text-xs text-slate-500">
+      Falta {formatarMoeda(faltaMetaValor)}
+    </p>
+  </div>
+</Card>
+
+<Card>
+  <p className="text-xs font-medium text-slate-500">
+    Meta de contratos
+  </p>
+
+  <div className="mt-2">
+    <strong className="text-xl text-slate-900">
+      {metaContratosTotal}
+    </strong>
+
+    <p className="mt-1 text-xs text-slate-500">
+      {percentualMetaContratos.toFixed(1)}% atingido
+    </p>
+
+    <p className="mt-1 text-xs text-slate-500">
+      Faltam {faltaMetaContratos} contrato(s)
+    </p>
+  </div>
+</Card>
 
             <div className="mt-2">
               <strong className="text-xl text-slate-900">
