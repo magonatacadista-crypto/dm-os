@@ -254,9 +254,13 @@ model Contrato {
   valorParcela Decimal?
   taxa         Decimal?
 
-  dataDigitacao DateTime?
-  dataAprovacao DateTime?
-  dataPagamento DateTime?
+  dataDigitacao      DateTime?
+  dataAprovacao      DateTime?
+  dataPagamento      DateTime?
+  comissaoPaga       Boolean   @default(false)
+  dataComissaoPaga   DateTime?
+  comissaoPercentual Decimal   @default(0)
+  valorComissao      Decimal   @default(0)
 
   observacoes String?
 

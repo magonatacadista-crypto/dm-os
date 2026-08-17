@@ -367,6 +367,10 @@ export async function editarContrato(
         numero: true,
         leadId: true,
         propostaId: true,
+        produtoId: true,
+
+comissaoPercentual: true,
+valorComissao: true,
 
         status: true,
 
@@ -455,6 +459,55 @@ export async function editarContrato(
   const observacoes = String(
     formData.get("observacoes") ?? "",
   ).trim();
+  const deveCongelarComissao =
+  status === "PAGO" &&
+  (
+    contratoAtual.status !== "PAGO" ||
+    (
+      Number(
+        contratoAtual.comissaoPercentual,
+      ) === 0 &&
+      Number(
+        contratoAtual.valorComissao,
+      ) === 0
+    )
+  );
+
+let comissaoPercentual =
+  Number(
+    contratoAtual.comissaoPercentual,
+  );
+
+let valorComissao =
+  Number(
+    contratoAtual.valorComissao,
+  );
+
+if (deveCongelarComissao) {
+  if (contratoAtual.produtoId) {
+    const produto =
+      await prisma.produto.findUnique({
+        where: {
+          id: contratoAtual.produtoId,
+        },
+
+        select: {
+          comissaoPercentual: true,
+        },
+      });
+
+    comissaoPercentual =
+      Number(
+        produto?.comissaoPercentual ?? 0,
+      );
+  } else {
+    comissaoPercentual = 0;
+  }
+
+  valorComissao =
+    valorLiberado *
+    (comissaoPercentual / 100);
+}
 
   const alteracoes: string[] = [];
 
@@ -624,6 +677,8 @@ export async function editarContrato(
           status,
           valorContratado,
           valorLiberado,
+          comissaoPercentual,
+valorComissao,
           prazo,
           valorParcela,
           taxa,
