@@ -202,6 +202,33 @@ export async function criarLead(formData: FormData) {
   const email = String(
     formData.get("email") ?? "",
   ).trim();
+  const cep = String(
+  formData.get("cep") ?? "",
+).trim();
+
+const logradouro = String(
+  formData.get("logradouro") ?? "",
+).trim();
+
+const numero = String(
+  formData.get("numero") ?? "",
+).trim();
+
+const complemento = String(
+  formData.get("complemento") ?? "",
+).trim();
+
+const bairro = String(
+  formData.get("bairro") ?? "",
+).trim();
+
+const cidade = String(
+  formData.get("cidade") ?? "",
+).trim();
+
+const estado = String(
+  formData.get("estado") ?? "",
+).trim();
 
   const origem = String(
     formData.get("origem") ?? "WhatsApp",
@@ -230,6 +257,9 @@ export async function criarLead(formData: FormData) {
   const proximoContato = converterDataOpcional(
     formData.get("proximoContato"),
   );
+  const clienteId = converterIdOpcional(
+  formData.get("clienteId"),
+);
 
   if (!nome || !telefone) {
     throw new Error(
@@ -253,6 +283,13 @@ export async function criarLead(formData: FormData) {
       telefone,
       whatsapp: whatsapp || null,
       email: email || null,
+      cep: cep || null,
+logradouro: logradouro || null,
+numero: numero || null,
+complemento: complemento || null,
+bairro: bairro || null,
+cidade: cidade || null,
+estado: estado || null,
       origem: origem || "WhatsApp",
 
       banco: nomeBanco,
@@ -278,6 +315,44 @@ export async function criarLead(formData: FormData) {
       proximoContato,
     },
   });
+  if (clienteId) {
+  const cliente =
+    await prisma.cliente.findUnique({
+      where: {
+        id: clienteId,
+      },
+
+      select: {
+        id: true,
+        leadId: true,
+      },
+    });
+
+  if (!cliente) {
+    throw new Error(
+      "Cliente não encontrado.",
+    );
+  }
+
+  if (
+    cliente.leadId &&
+    cliente.leadId !== lead.id
+  ) {
+    throw new Error(
+      "Este cliente já possui um Lead vinculado.",
+    );
+  }
+
+  await prisma.cliente.update({
+    where: {
+      id: clienteId,
+    },
+
+    data: {
+      leadId: lead.id,
+    },
+  });
+}
 
   await registrarHistoricoLead({
     leadId: lead.id,
@@ -339,10 +414,14 @@ export async function editarLead(
   const produtoId = converterIdOpcional(
     formData.get("produtoId"),
   );
+  const clienteId = converterIdOpcional(
+  formData.get("clienteId"),
+);
 
   const proximoContato = converterDataOpcional(
     formData.get("proximoContato"),
   );
+  
 
   if (!Number.isInteger(id) || id <= 0) {
     throw new Error("Lead inválido.");

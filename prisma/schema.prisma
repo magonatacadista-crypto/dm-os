@@ -66,11 +66,23 @@ enum StatusContrato {
 }
 
 model Cliente {
-  id       Int      @id @default(autoincrement())
+  id       Int     @id @default(autoincrement())
   nome     String
-  cpf      String   @unique
+  cpf      String  @unique
   telefone String
   email    String?
+
+  cep         String?
+  logradouro  String?
+  numero      String?
+  complemento String?
+  bairro      String?
+  cidade      String?
+  estado      String?
+
+  leadId Int?  @unique
+  lead   Lead? @relation(fields: [leadId], references: [id], onDelete: SetNull)
+
   criadoEm DateTime @default(now())
 }
 
@@ -147,11 +159,18 @@ model Produto {
 model Lead {
   id Int @id @default(autoincrement())
 
-  nome     String
-  cpf      String?
-  telefone String
-  whatsapp String?
-  email    String?
+  nome        String
+  cpf         String?
+  telefone    String
+  whatsapp    String?
+  email       String?
+  cep         String?
+  logradouro  String?
+  numero      String?
+  complemento String?
+  bairro      String?
+  cidade      String?
+  estado      String?
 
   origem String     @default("WhatsApp")
   status StatusLead @default(NOVO)
@@ -189,6 +208,7 @@ model Lead {
   criadoEm     DateTime        @default(now())
   atualizadoEm DateTime        @updatedAt
   contratos    Contrato[]
+  cliente      Cliente?
 }
 
 model HistoricoLead {

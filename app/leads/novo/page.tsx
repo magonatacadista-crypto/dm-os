@@ -10,10 +10,31 @@ import { prisma } from "../../lib/prisma";
 import { criarLead } from "../actions";
 
 export const dynamic = "force-dynamic";
+type NovoLeadPageProps = {
+  searchParams: Promise<{
+    clienteId?: string;
+  }>;
+};
 
-export default async function NovoLeadPage() {
-  const [bancos, convenios, vendedores, produtos] =
-    await Promise.all([
+export default async function NovoLeadPage({
+  searchParams,
+}: NovoLeadPageProps) {
+  const parametros = await searchParams;
+
+  const clienteId = Number(
+    parametros.clienteId ?? 0,
+  );
+
+  const clienteIdValido =
+    Number.isInteger(clienteId) &&
+    clienteId > 0;
+  const [
+  bancos,
+  convenios,
+  vendedores,
+  produtos,
+  cliente,
+] = await Promise.all([
       prisma.banco.findMany({
         where: {
           ativo: true,
@@ -69,6 +90,28 @@ export default async function NovoLeadPage() {
           codigo: true,
         },
       }),
+      clienteIdValido
+  ? prisma.cliente.findUnique({
+      where: {
+        id: clienteId,
+      },
+      select: {
+        id: true,
+        nome: true,
+        cpf: true,
+        telefone: true,
+        email: true,
+        cep: true,
+        logradouro: true,
+        numero: true,
+        complemento: true,
+        bairro: true,
+        cidade: true,
+        estado: true,
+        leadId: true,
+      },
+    })
+  : Promise.resolve(null),
     ]);
 
   return (
@@ -83,39 +126,99 @@ export default async function NovoLeadPage() {
 
         <Card>
           <form action={criarLead}>
+            {cliente && (
+  <input
+    type="hidden"
+    name="clienteId"
+    value={cliente.id}
+  />
+)}
             <div className="grid gap-5 md:grid-cols-2">
               <Input
-                label="Nome"
-                name="nome"
-                placeholder="Nome completo"
-                required
-              />
+  label="Nome"
+  name="nome"
+  placeholder="Nome completo"
+  defaultValue={cliente?.nome ?? ""}
+  required
+/>
 
               <Input
-                label="CPF"
-                name="cpf"
-                placeholder="000.000.000-00"
-              />
+  label="CPF"
+  name="cpf"
+  placeholder="000.000.000-00"
+  defaultValue={cliente?.cpf ?? ""}
+/>
 
               <Input
-                label="Telefone"
-                name="telefone"
-                placeholder="(16) 99999-9999"
-                required
-              />
+  label="Telefone"
+  name="telefone"
+  placeholder="(16) 99999-9999"
+  defaultValue={cliente?.telefone ?? ""}
+  required
+/>
 
               <Input
-                label="WhatsApp"
-                name="whatsapp"
-                placeholder="(16) 99999-9999"
-              />
+  label="WhatsApp"
+  name="whatsapp"
+  placeholder="(16) 99999-9999"
+  defaultValue={cliente?.telefone ?? ""}
+/>
 
               <Input
-                label="E-mail"
-                name="email"
-                type="email"
-                placeholder="cliente@email.com"
-              />
+  label="E-mail"
+  name="email"
+  type="email"
+  placeholder="cliente@email.com"
+  defaultValue={cliente?.email ?? ""}
+/>
+              <Input
+  label="CEP"
+  name="cep"
+  placeholder="00000-000"
+  defaultValue={cliente?.cep ?? ""}
+/>
+
+<Input
+  label="Logradouro"
+  name="logradouro"
+  placeholder="Rua, Avenida, Alameda..."
+  defaultValue={cliente?.logradouro ?? ""}
+/>
+
+<Input
+  label="Número"
+  name="numero"
+  placeholder="Número"
+  defaultValue={cliente?.numero ?? ""}
+/>
+
+<Input
+  label="Complemento"
+  name="complemento"
+  placeholder="Apartamento, bloco, fundos..."
+  defaultValue={cliente?.complemento ?? ""}
+/>
+
+<Input
+  label="Bairro"
+  name="bairro"
+  placeholder="Bairro"
+  defaultValue={cliente?.bairro ?? ""}
+/>
+
+<Input
+  label="Cidade"
+  name="cidade"
+  placeholder="Cidade"
+  defaultValue={cliente?.cidade ?? ""}
+/>
+
+<Input
+  label="Estado"
+  name="estado"
+  placeholder="SP"
+  defaultValue={cliente?.estado ?? ""}
+/>
 
               <Input
                 label="Origem"

@@ -8,11 +8,19 @@ type ClienteFormProps = {
   modo?: "cadastrar" | "editar";
   clienteId?: number;
   dadosIniciais?: {
-    nome: string;
-    cpf: string;
-    telefone: string;
-    email: string;
-  };
+  nome: string;
+  cpf: string;
+  telefone: string;
+  email: string;
+
+  cep?: string;
+  logradouro?: string;
+  numero?: string;
+  complemento?: string;
+  bairro?: string;
+  cidade?: string;
+  estado?: string;
+};
 };
 
 export default function ClienteForm({
@@ -26,6 +34,25 @@ export default function ClienteForm({
   const [cpf, setCpf] = useState(dadosIniciais?.cpf ?? "");
   const [telefone, setTelefone] = useState(dadosIniciais?.telefone ?? "");
   const [email, setEmail] = useState(dadosIniciais?.email ?? "");
+  const [cep, setCep] = useState(dadosIniciais?.cep ?? "");
+const [logradouro, setLogradouro] = useState(
+  dadosIniciais?.logradouro ?? "",
+);
+const [numero, setNumero] = useState(
+  dadosIniciais?.numero ?? "",
+);
+const [complemento, setComplemento] = useState(
+  dadosIniciais?.complemento ?? "",
+);
+const [bairro, setBairro] = useState(
+  dadosIniciais?.bairro ?? "",
+);
+const [cidade, setCidade] = useState(
+  dadosIniciais?.cidade ?? "",
+);
+const [estado, setEstado] = useState(
+  dadosIniciais?.estado ?? "",
+);
   const [mensagem, setMensagem] = useState("");
   const [salvando, setSalvando] = useState(false);
 
@@ -49,11 +76,18 @@ export default function ClienteForm({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          nome,
-          cpf,
-          telefone,
-          email,
-        }),
+  nome,
+  cpf,
+  telefone,
+  email,
+  cep,
+  logradouro,
+  numero,
+  complemento,
+  bairro,
+  cidade,
+  estado,
+}),
       });
 
       const dados = await resposta.json();
@@ -82,6 +116,13 @@ export default function ClienteForm({
       setCpf("");
       setTelefone("");
       setEmail("");
+      setCep("");
+setLogradouro("");
+setNumero("");
+setComplemento("");
+setBairro("");
+setCidade("");
+setEstado("");
     } catch {
       setMensagem(
         `Erro ao ${editando ? "atualizar" : "cadastrar"} o cliente.`
@@ -151,6 +192,116 @@ export default function ClienteForm({
             className="w-full rounded-lg border border-gray-300 px-4 py-3 outline-none focus:border-blue-500"
           />
         </div>
+        <div>
+  <label className="mb-2 block font-medium">
+    CEP
+  </label>
+
+  <input
+    type="text"
+    value={cep}
+    onChange={(event) => setCep(event.target.value)}
+    placeholder="00000-000"
+    className="w-full rounded-lg border border-gray-300 px-4 py-3 outline-none focus:border-blue-500"
+  />
+</div>
+
+<div>
+  <label className="mb-2 block font-medium">
+    Logradouro
+  </label>
+
+  <input
+    type="text"
+    value={logradouro}
+    onChange={(event) =>
+      setLogradouro(event.target.value)
+    }
+    placeholder="Rua, Avenida, Alameda..."
+    className="w-full rounded-lg border border-gray-300 px-4 py-3 outline-none focus:border-blue-500"
+  />
+</div>
+
+<div>
+  <label className="mb-2 block font-medium">
+    Número
+  </label>
+
+  <input
+    type="text"
+    value={numero}
+    onChange={(event) =>
+      setNumero(event.target.value)
+    }
+    placeholder="Número"
+    className="w-full rounded-lg border border-gray-300 px-4 py-3 outline-none focus:border-blue-500"
+  />
+</div>
+
+<div>
+  <label className="mb-2 block font-medium">
+    Complemento
+  </label>
+
+  <input
+    type="text"
+    value={complemento}
+    onChange={(event) =>
+      setComplemento(event.target.value)
+    }
+    placeholder="Apartamento, bloco, fundos..."
+    className="w-full rounded-lg border border-gray-300 px-4 py-3 outline-none focus:border-blue-500"
+  />
+</div>
+
+<div>
+  <label className="mb-2 block font-medium">
+    Bairro
+  </label>
+
+  <input
+    type="text"
+    value={bairro}
+    onChange={(event) =>
+      setBairro(event.target.value)
+    }
+    placeholder="Bairro"
+    className="w-full rounded-lg border border-gray-300 px-4 py-3 outline-none focus:border-blue-500"
+  />
+</div>
+
+<div>
+  <label className="mb-2 block font-medium">
+    Cidade
+  </label>
+
+  <input
+    type="text"
+    value={cidade}
+    onChange={(event) =>
+      setCidade(event.target.value)
+    }
+    placeholder="Cidade"
+    className="w-full rounded-lg border border-gray-300 px-4 py-3 outline-none focus:border-blue-500"
+  />
+</div>
+
+<div>
+  <label className="mb-2 block font-medium">
+    Estado
+  </label>
+
+  <input
+    type="text"
+    value={estado}
+    onChange={(event) =>
+      setEstado(event.target.value)
+    }
+    placeholder="SP"
+    maxLength={2}
+    className="w-full rounded-lg border border-gray-300 px-4 py-3 uppercase outline-none focus:border-blue-500"
+  />
+</div>
       </div>
 
       {mensagem && (

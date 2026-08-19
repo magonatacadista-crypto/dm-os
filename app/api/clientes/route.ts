@@ -14,11 +14,19 @@ export async function POST(request: Request) {
 
   const cliente = await prisma.cliente.create({
     data: {
-      nome: body.nome,
-      cpf: body.cpf,
-      telefone: body.telefone,
-      email: body.email || null,
-    },
+  nome: body.nome,
+  cpf: body.cpf,
+  telefone: body.telefone,
+  email: body.email || null,
+
+  cep: body.cep || null,
+  logradouro: body.logradouro || null,
+  numero: body.numero || null,
+  complemento: body.complemento || null,
+  bairro: body.bairro || null,
+  cidade: body.cidade || null,
+  estado: body.estado || null,
+},
   });
 
   return NextResponse.json(cliente, { status: 201 });

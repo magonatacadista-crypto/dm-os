@@ -385,6 +385,40 @@ export default async function LeadPage({
               label="E-mail"
               value={lead.email}
             />
+            <ResumoItem
+  label="CEP"
+  value={lead.cep}
+/>
+
+<ResumoItem
+  label="Logradouro"
+  value={lead.logradouro}
+/>
+
+<ResumoItem
+  label="Número"
+  value={lead.numero}
+/>
+
+<ResumoItem
+  label="Complemento"
+  value={lead.complemento}
+/>
+
+<ResumoItem
+  label="Bairro"
+  value={lead.bairro}
+/>
+
+<ResumoItem
+  label="Cidade"
+  value={lead.cidade}
+/>
+
+<ResumoItem
+  label="Estado"
+  value={lead.estado}
+/>
 
             <ResumoItem
               label="Origem"

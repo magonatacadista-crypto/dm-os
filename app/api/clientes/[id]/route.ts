@@ -70,6 +70,13 @@ export async function PUT(
     const cpf = String(body.cpf ?? "").trim();
     const telefone = String(body.telefone ?? "").trim();
     const email = String(body.email ?? "").trim();
+    const cep = String(body.cep ?? "").trim();
+const logradouro = String(body.logradouro ?? "").trim();
+const numero = String(body.numero ?? "").trim();
+const complemento = String(body.complemento ?? "").trim();
+const bairro = String(body.bairro ?? "").trim();
+const cidade = String(body.cidade ?? "").trim();
+const estado = String(body.estado ?? "").trim();
 
     if (!nome || !cpf || !telefone) {
       return NextResponse.json(
@@ -86,11 +93,19 @@ export async function PUT(
         id: clienteId,
       },
       data: {
-        nome,
-        cpf,
-        telefone,
-        email: email || null,
-      },
+  nome,
+  cpf,
+  telefone,
+  email: email || null,
+
+  cep: cep || null,
+  logradouro: logradouro || null,
+  numero: numero || null,
+  complemento: complemento || null,
+  bairro: bairro || null,
+  cidade: cidade || null,
+  estado: estado || null,
+},
     });
 
     return NextResponse.json({
